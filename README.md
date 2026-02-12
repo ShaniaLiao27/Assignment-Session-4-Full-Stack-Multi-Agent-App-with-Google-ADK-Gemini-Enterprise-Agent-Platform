@@ -1,6 +1,6 @@
-# Content Creation Studio
+# Google ADK Multi-Agent on Vertex AI 
 
-**Multi-Agent Content Creation Workshop**
+**Multi-Agent Content Creation design consideration Workshop**
 
 An intelligent, multi-agent content creation system and comprehensive workshop powered by Google's Gemini models. This project demonstrates how to build AI agents with custom tools using Google's Agent Development Kit (ADK). Throughout the workshop, you will explore various design patterns (Sequential, Parallel, Iterative architectures), navigate agent architecture trade-offs (Sub-agents vs. Agent as a Tool), and master memory & context for reliable agent teams. It also covers implementing callbacks & observability, managing sessions, state, and artifacts, and achieving scalable deployment of a full-stack system (React frontend, FastAPI backend) to Vertex AI Agent Engine on Google Cloud Platform.
 
@@ -34,17 +34,17 @@ Interactive Jupyter notebooks to learn how to build multi-agent systems step by 
 
 ---
 
-## Workshop: 𝙂𝙤𝙤𝙜𝙡𝙚 𝘼𝘿𝙆 & 𝙑𝙚𝙧𝙩𝙚𝙭 𝘼𝙄: 𝙈𝙪𝙡𝙩𝙞-𝘼𝙜𝙚𝙣𝙩 𝙎𝙮𝙨𝙩𝙚𝙢 𝘿𝙚𝙨𝙞𝙜𝙣 𝘾𝙤𝙣𝙨𝙞𝙙𝙚𝙧𝙖𝙩𝙞𝙤𝙣𝙨
+## Workshop: Google ADK & Vertex AI: Multi-Agent System Design
 
 What we will cover:
 
-• 𝗕𝘂𝗶𝗹𝗱 𝗔𝗜 𝗔𝗴𝗲𝗻𝘁𝘀: Create agents with custom tools.
-• 𝗗𝗲𝘀𝗶𝗴𝗻 𝗣𝗮𝘁𝘁𝗲𝗿𝗻𝘀: Choosing between LLM-Driven and Workflow-Driven architectures (Sequential, Parallel, Iterative).
-• 𝗔𝗴𝗲𝗻𝘁 𝗔𝗿𝗰𝗵𝗶𝘁𝗲𝗰𝘁𝘂𝗿𝗲: Navigating the trade-offs between Sub-agents and Agent Tools.
-• 𝗖𝗮𝗹𝗹𝗯𝗮𝗰𝗸𝘀 & 𝗢𝗯𝘀𝗲𝗿𝘃𝗮𝗯𝗶𝗹𝗶𝘁𝘆: Implementing custom logging, guardrails, and metrics with callbacks, and utilizing ADK's built-in LoggingPlugin for comprehensive local debugging.
-• 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁: How to handle sessions, state, and artifacts within an integrated AI orchestration layer.
-• 𝗠𝗲𝗺𝗼𝗿𝘆 & 𝗖𝗼𝗻𝘁𝗲𝘅𝘁: Mastering Short-Term vs. Long-Term memory for reliable agent teams.
-• 𝗦𝗰𝗮𝗹𝗮𝗯𝗹𝗲 𝗗𝗲𝗽𝗹𝗼𝘆𝗺𝗲𝗻𝘁: Deploying your full-stack Multi-Agent System to GCP environments.
+- **Build AI Agents**: Create agents with custom tools.                                                                                           
+- **Design Patterns**: Choosing between LLM-Driven and Workflow-Driven architectures (Sequential, Parallel, Iterative).                           
+- **Agent Architecture**: Navigating the trade-offs between Sub-agents and Agent as a Tool.                                                           
+- **Callbacks & Observability**: Implementing custom logging, guardrails, and metrics with callbacks, and utilizing ADK's built-in LoggingPlugin for comprehensive local debugging.                                                                                                                  
+- **Management**: How to handle sessions, state, and artifacts within an integrated AI orchestration layer.                                       
+- **Memory & Context**: Mastering Short-Term vs. Long-Term memory for reliable agent teams.                                                       
+- **Scalable Deployment**: Deploying your full-stack Multi-Agent System to GCP environments.    
 
 ---
 

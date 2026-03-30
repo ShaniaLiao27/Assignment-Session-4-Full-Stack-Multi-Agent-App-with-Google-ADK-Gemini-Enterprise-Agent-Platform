@@ -7,8 +7,7 @@ import os
 from google.genai import types
 
 # TODO: #REPLACE-model-name
-# Set MODEL_NAME from the environment variable "WORKER_MODEL".
-# Use "gemini-2.5-flash" as the default if the variable is not set.
+# Set MODEL_NAME to the string "gemini-2.5-flash".
 MODEL_NAME = None  # Replace this line
 
 

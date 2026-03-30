@@ -197,7 +197,6 @@ cloudshell edit .env
 <pre><code language="language-text" class="language-text">GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_LOCATION=us-central1
 GOOGLE_GENAI_USE_VERTEXAI=1
-WORKER_MODEL=gemini-2.5-flash
 </code></pre>
 <p>💡 <strong>Why no API key?</strong> The <code>gcloud auth application-default login</code> command you ran sets up <strong>Application Default Credentials</strong>. Setting <code>GOOGLE_GENAI_USE_VERTEXAI=1</code> tells ADK to use those credentials with Vertex AI — no separate API key needed. This applies throughout the entire codelab.</p>
 <p>👉 Save the file (<code>Ctrl+S</code> in the editor), then return to the terminal.</p>
@@ -285,7 +284,7 @@ async for event in runner.run_async(
 import os
 from google.genai import types
 
-MODEL_NAME = os.getenv(&#34;WORKER_MODEL&#34;, &#34;gemini-2.5-flash&#34;)
+MODEL_NAME = &#34;gemini-2.5-flash&#34;
 
 RETRY_CONFIG = types.HttpRetryOptions(
     attempts=5,
@@ -299,7 +298,7 @@ MAX_IMPROVEMENT_ITERATIONS = int(os.getenv(&#34;MAX_IMPROVEMENT_ITERATIONS&#34;,
 </code></pre>
 <p><strong>What each setting does:</strong></p>
 <ul>
-<li><code>MODEL_NAME</code>: The Gemini model all agents will use. Overridable via environment variable.</li>
+<li><code>MODEL_NAME</code>: The Gemini model all agents will use.</li>
 <li><code>RETRY_CONFIG</code>: Automatic retry on rate limits (429) and transient server errors. <code>exp_base=7</code> means waits of 1s, 7s, 49s between retries — backing off aggressively to avoid hammering the API.</li>
 <li><code>QUALITY_SCORE_THRESHOLD</code>: The minimum quality score (0-100) content must reach before the improvement loop exits.</li>
 <li><code>MAX_IMPROVEMENT_ITERATIONS</code>: Safety ceiling for the loop — it stops after this many attempts even if quality hasn&#39;t been reached.</li>

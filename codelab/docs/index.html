@@ -387,7 +387,7 @@ root_agent = topic_research_agent
       </google-codelab-step>
     
       <google-codelab-step label="Building Custom Tools" duration="0">
-        <p>Open <code>content_creation_studio/tools.py</code>. You will implement five tools, each marked with a <code># TODO</code> comment. Replace each <code>pass  # Replace this line</code> with the implementation below.</p>
+        <p>Open <code>content_creation_studio/tools.py</code>. The tools are already implemented — your job in this step is to read and understand them before using them in later steps.</p>
 <h2 is-upgraded>How ADK tools work</h2>
 <p>Any plain Python function with type-annotated parameters and a docstring becomes an ADK tool. The docstring is shown to the model as the tool description, so write it clearly.</p>
 <pre><code language="language-python" class="language-python">def my_tool(input: str) -&gt; dict:
@@ -407,98 +407,43 @@ agent = Agent(
 )
 </code></pre>
 <p>You&#39;ll see <code>FunctionTool</code> used in the agent files starting from Step 10.</p>
-<h2 is-upgraded>1. <code>count_words</code></h2>
-<p>Replace the <code>pass</code> in <code>count_words</code> with:</p>
+<h2 is-upgraded>Walk through the tools in <code>tools.py</code></h2>
+<p>👉 Open <code>content_creation_studio/tools.py</code> and read through each function. Here is what each tool does and why it exists:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>Tool</p>
+</td><td colspan="1" rowspan="1"><p>Returns</p>
+</td><td colspan="1" rowspan="1"><p>Purpose</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>count_words(text)</code></p>
+</td><td colspan="1" rowspan="1"><p><code>int</code></p>
+</td><td colspan="1" rowspan="1"><p>Counts words by splitting on whitespace</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>calculate_readability_score(text)</code></p>
+</td><td colspan="1" rowspan="1"><p><code>dict</code> with score and grade</p>
+</td><td colspan="1" rowspan="1"><p>Flesch Reading Ease formula — higher score = easier to read</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>generate_hashtags(text, count)</code></p>
+</td><td colspan="1" rowspan="1"><p><code>List[str]</code></p>
+</td><td colspan="1" rowspan="1"><p>Extracts frequent non-stop words and formats them as #Hashtags</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>calculate_content_quality_score(...)</code></p>
+</td><td colspan="1" rowspan="1"><p><code>dict</code> with overall_score and meets_threshold</p>
+</td><td colspan="1" rowspan="1"><p>Weighted formula: 30% word count + 30% readability + 40% structure</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>exit_loop(tool_context)</code></p>
+</td><td colspan="1" rowspan="1"><p><code>dict</code></p>
+</td><td colspan="1" rowspan="1"><p>Sets <code>tool_context.actions.escalate = True</code> to break out of a <code>LoopAgent</code></p>
+</td></tr>
+</table>
+<p><strong>Key concept — </strong></p>
+<p><strong><code>exit_loop</code></strong></p>
+<p><strong>:</strong> Setting <code>tool_context.actions.escalate = True</code> is the ADK signal to stop a <code>LoopAgent</code> early. You&#39;ll see exactly how this is used in Step 10.</p>
+<h2 is-upgraded>Your turn: implement <code>count_words</code></h2>
+<p>One tool is left for you to implement so you experience writing an ADK tool yourself. Open <code>tools.py</code> and find <code>count_words</code> — it has a <code># TODO</code> comment. Replace the <code>pass</code> with:</p>
 <pre><code language="language-python" class="language-python">    count = len(text.split())
     print(f&#34;   Result: {count} words&#34;)
     return count
 </code></pre>
-<h2 is-upgraded>2. <code>calculate_readability_score</code></h2>
-<p>Replace the <code>pass</code> in <code>calculate_readability_score</code> with:</p>
-<pre><code language="language-python" class="language-python">    sentences = [s.strip() for s in text.split(&#39;.&#39;) if s.strip()]
-    if not sentences:
-        return {&#34;score&#34;: 0, &#34;grade&#34;: &#34;Unable to calculate&#34;}
-
-    words = text.split()
-    total_words = len(words)
-    total_sentences = len(sentences)
-    total_syllables = sum(count_syllables(word) for word in words)
-
-    if total_words == 0 or total_sentences == 0:
-        score = 0
-    else:
-        score = 206.835 - 1.015 * (total_words / total_sentences) - 84.6 * (total_syllables / total_words)
-        score = max(0, min(100, score))
-
-    if score &gt;= 60:
-        grade = &#34;Easy to read&#34;
-    elif score &gt;= 50:
-        grade = &#34;Moderate&#34;
-    else:
-        grade = &#34;Complex&#34;
-
-    result = {&#34;score&#34;: round(score, 2), &#34;grade&#34;: grade}
-    print(f&#34;   Result: {result[&#39;score&#39;]} - {result[&#39;grade&#39;]}&#34;)
-    return result
-</code></pre>
-<h2 is-upgraded>3. <code>generate_hashtags</code></h2>
-<p>Replace the <code>pass</code> in <code>generate_hashtags</code> with:</p>
-<pre><code language="language-python" class="language-python">    stop_words = {
-        &#39;the&#39;, &#39;is&#39;, &#39;at&#39;, &#39;which&#39;, &#39;on&#39;, &#39;a&#39;, &#39;an&#39;, &#39;as&#39;, &#39;are&#39;, &#39;was&#39;, &#39;were&#39;,
-        &#39;been&#39;, &#39;be&#39;, &#39;have&#39;, &#39;has&#39;, &#39;had&#39;, &#39;do&#39;, &#39;does&#39;, &#39;did&#39;, &#39;will&#39;, &#39;would&#39;,
-        &#39;could&#39;, &#39;should&#39;, &#39;may&#39;, &#39;might&#39;, &#39;must&#39;, &#39;can&#39;, &#39;of&#39;, &#39;to&#39;, &#39;for&#39;, &#39;in&#39;,
-        &#39;with&#39;, &#39;by&#39;, &#39;from&#39;, &#39;up&#39;, &#39;about&#39;, &#39;into&#39;, &#39;through&#39;, &#39;during&#39;, &#39;and&#39;,
-        &#39;or&#39;, &#39;but&#39;, &#39;if&#39;, &#39;then&#39;, &#39;than&#39;, &#39;so&#39;, &#39;this&#39;, &#39;that&#39;, &#39;these&#39;, &#39;those&#39;
-    }
-
-    words = re.findall(r&#39;\b[a-zA-Z]{4,}\b&#39;, text.lower())
-    word_freq = {}
-    for word in words:
-        if word not in stop_words:
-            word_freq[word] = word_freq.get(word, 0) + 1
-
-    sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-    top_words = [word for word, freq in sorted_words[:count]]
-    hashtags = [f&#34;#{word.capitalize()}&#34; for word in top_words]
-
-    print(f&#34;   Result: {&#39;, &#39;.join(hashtags)}&#34;)
-    return hashtags
-</code></pre>
-<h2 is-upgraded>4. <code>calculate_content_quality_score</code></h2>
-<p>Replace the <code>pass</code> in <code>calculate_content_quality_score</code> with:</p>
-<pre><code language="language-python" class="language-python">    if word_count &lt; 500:
-        word_score = 30
-    elif word_count &lt; 800:
-        word_score = 60
-    elif word_count &lt;= 2000:
-        word_score = 100
-    else:
-        word_score = 80
-
-    read_score = min(100, readability_score * 1.5) if readability_score &gt; 0 else 40
-
-    structure_score = 0
-    if has_headings:
-        structure_score += 50
-    if has_conclusion:
-        structure_score += 50
-
-    overall_score = (word_score * 0.3) + (read_score * 0.3) + (structure_score * 0.4)
-
-    result = {
-        &#34;overall_score&#34;: round(overall_score, 2),
-        &#34;word_count&#34;: word_count,
-        &#34;meets_threshold&#34;: overall_score &gt;= 70
-    }
-    print(f&#34;   Result: {result[&#39;overall_score&#39;]}/100 (Threshold: {&#39;MET&#39; if result[&#39;meets_threshold&#39;] else &#39;NOT MET&#39;})&#34;)
-    return result
-</code></pre>
-<h2 is-upgraded>5. <code>exit_loop</code></h2>
-<p>Replace the <code>pass</code> in <code>exit_loop</code> with:</p>
-<pre><code language="language-python" class="language-python">    tool_context.actions.escalate = True
-    return {&#34;result&#34;: &#34;Quality threshold met. Content approved.&#34;}
-</code></pre>
-<p><strong>Key concept:</strong> Setting <code>tool_context.actions.escalate = True</code> is the ADK signal to stop a <code>LoopAgent</code> early. You&#39;ll see exactly how this is used in Step 10.</p>
 <h2 is-upgraded>Verify</h2>
 <pre><code language="language-bash" class="language-bash">python -c &#34;
 from content_creation_studio.tools import count_words, calculate_readability_score

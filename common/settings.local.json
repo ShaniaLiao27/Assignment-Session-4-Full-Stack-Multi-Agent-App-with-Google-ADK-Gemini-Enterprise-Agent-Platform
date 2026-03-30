@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo === $\\(basename $d\\) ===:*)",
+      "WebFetch(domain:codelabs.developers.google.com)",
+      "WebFetch(domain:developers.google.com)",
+      "Bash(git reset:*)",
+      "Bash(python3:)",
+      "Bash(xargs ls:*)",
+      "Bash(source:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(git mv:*)"
+    ]
+  }
+}

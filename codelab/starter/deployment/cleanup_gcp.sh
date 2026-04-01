@@ -115,8 +115,8 @@ if [ -n "$AGENT_ENGINE_RESOURCE_NAME" ]; then
     echo "🗑️  Deleting Agent Engine: $AGENT_ENGINE_RESOURCE_NAME..."
 
     # Use the Python cleanup script which is more reliable
-    if [ -f "$(dirname "$0")/deploy.py" ]; then
-        python "$(dirname "$0")/deploy.py" --action cleanup --resource_name "$AGENT_ENGINE_RESOURCE_NAME" || {
+    if [ -f "$SCRIPT_DIR/deploy.py" ]; then
+        python "$SCRIPT_DIR/deploy.py" --action cleanup --resource_name "$AGENT_ENGINE_RESOURCE_NAME" || {
             echo "⚠️  Python cleanup failed, trying gcloud command..."
 
             # Extract components from resource name
@@ -201,9 +201,8 @@ if gcloud iam service-accounts describe $SERVICE_ACCOUNT_EMAIL \
     echo ""
 
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "🗑️  Deleting service account..."
+        echo "🗑️  Removing IAM role bindings..."
 
-        # First, remove IAM policy bindings
         ROLES=(
             "roles/aiplatform.user"
             "roles/run.invoker"
@@ -220,7 +219,7 @@ if gcloud iam service-accounts describe $SERVICE_ACCOUNT_EMAIL \
                 --quiet &>/dev/null || true
         done
 
-        # Delete the service account
+        echo "🗑️  Deleting service account..."
         gcloud iam service-accounts delete $SERVICE_ACCOUNT_EMAIL \
             --project=$GOOGLE_CLOUD_PROJECT \
             --quiet
@@ -247,9 +246,7 @@ if gsutil ls -b gs://$BUCKET_NAME &>/dev/null; then
 
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "🗑️  Deleting bucket and all contents..."
-        gsutil -m rm -r gs://$BUCKET_NAME || {
-            echo "⚠️  Failed to delete bucket contents, trying to delete bucket anyway..."
-        }
+        gsutil -m rm -r gs://$BUCKET_NAME || true
         echo "✅ Storage bucket deleted"
     else
         echo "ℹ️  Keeping storage bucket"
@@ -272,13 +269,14 @@ echo "  ✅ Service account cleanup: Done"
 echo "  ✅ Storage bucket cleanup: Done"
 echo ""
 echo "💡 Note: The following may still exist:"
-echo "  - Enabled APIs (these don't cost money)"
+echo "  - Enabled APIs (these don't cost money when idle)"
 echo "  - Cloud Build history"
 echo "  - Cloud Logging entries"
 echo ""
-echo "To completely disable APIs (optional):"
-echo "  gcloud services disable aiplatform.googleapis.com --project=$GOOGLE_CLOUD_PROJECT"
-echo "  gcloud services disable run.googleapis.com --project=$GOOGLE_CLOUD_PROJECT"
+echo "To also disable APIs (optional):"
+echo "  gcloud services disable aiplatform.googleapis.com run.googleapis.com \\"
+echo "    cloudbuild.googleapis.com artifactregistry.googleapis.com \\"
+echo "    --project=$GOOGLE_CLOUD_PROJECT"
 echo ""
-echo "All cleanup operations completed successfully!"
+echo "All cleanup operations completed!"
 echo ""

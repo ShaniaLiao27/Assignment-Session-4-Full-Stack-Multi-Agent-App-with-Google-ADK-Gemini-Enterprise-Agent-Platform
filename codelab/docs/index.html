@@ -1482,45 +1482,51 @@ async def serve_frontend():
       </google-codelab-step>
     
       <google-codelab-step label="Clean Up Resources" duration="0">
-        <p>If you deployed in Steps 17 or 18, clean up your resources to avoid ongoing charges.</p>
+        <p>To avoid ongoing charges, run the cleanup script to tear down all resources created during this codelab.</p>
 <h2 is-upgraded>What gets cleaned up</h2>
-<p>The cleanup script removes:</p>
-<ul>
-<li>The <strong>Agent Engine</strong> (Reasoning Engine) instance</li>
-<li>The <strong>GCS staging artifacts</strong> uploaded during deployment</li>
-</ul>
-<p>It does <strong>not</strong> delete your GCP project, your GCS bucket itself, or any local files.</p>
-<h2 is-upgraded>Remove the Agent Engine instance</h2>
-<pre><code language="language-bash" class="language-bash">cd /path/to/content_creation_mas
-python deployment/deploy.py --action cleanup
+<p>The script removes everything created by <code>setup_gcp.sh</code> and <code>deploy-combined.sh</code>:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>Resource</p>
+</td><td colspan="1" rowspan="1"><p>How removed</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Cloud Run service</p>
+</td><td colspan="1" rowspan="1"><p><code>gcloud run services delete</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Agent Engine (Reasoning Engine)</p>
+</td><td colspan="1" rowspan="1"><p><code>deploy.py --action cleanup</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Docker images in Artifact Registry</p>
+</td><td colspan="1" rowspan="1"><p><code>gcloud artifacts docker images delete</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Artifact Registry repository</p>
+</td><td colspan="1" rowspan="1"><p>Optional prompt</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Service account + IAM bindings</p>
+</td><td colspan="1" rowspan="1"><p>Optional prompt</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Cloud Storage bucket</p>
+</td><td colspan="1" rowspan="1"><p>Optional prompt</p>
+</td></tr>
+</table>
+<h2 is-upgraded>Run the cleanup script</h2>
+<pre><code language="language-bash" class="language-bash">bash deployment/cleanup_gcp.sh
 </code></pre>
-<p>You will see output like:</p>
-<pre><code language="language-text" class="language-text">🧹 Starting cleanup...
-   Resource: projects/123456/locations/us-central1/reasoningEngines/789012345
-✅ Agent Engine deleted successfully.
-✅ Cleanup complete.
+<p>The script reads your <code>.env</code> file, shows what it will delete, and asks for confirmation before proceeding:</p>
+<pre><code language="language-text" class="language-text">⚠️  WARNING: This will DELETE the following resources:
+
+  1. Cloud Run service: content-studio
+  2. Agent Engine: projects/123456/.../reasoningEngines/789012345
+  3. Docker images in Artifact Registry
+  4. Service Account: content-studio-sa@... (optional)
+  5. Cloud Storage Bucket: gs://your-project-content-studio (optional)
+
+This action CANNOT be undone!
+
+Are you sure you want to proceed? (yes/no):
 </code></pre>
-<h2 is-upgraded>Remove the Cloud Run service</h2>
-<pre><code language="language-bash" class="language-bash">gcloud run services delete content-studio \
-  --region=us-central1 \
-  --project=YOUR_PROJECT_ID
-</code></pre>
+<p>Type <code>yes</code> to proceed. Resources 4 and 5 will each prompt separately — you can choose to keep them if you plan to reuse the project.</p>
 <h2 is-upgraded>Verify in the Cloud Console</h2>
-<p>Navigate to <a href="https://console.cloud.google.com/vertex-ai/agents" target="_blank">Vertex AI → Agent Engine</a> and <a href="https://console.cloud.google.com/run" target="_blank">Cloud Run</a> and confirm your instances are no longer listed.</p>
-<h2 is-upgraded>Manual cleanup (if the script fails)</h2>
-<pre><code language="language-bash" class="language-bash">gcloud ai reasoning-engines delete REASONING_ENGINE_ID \
-  --location=us-central1 \
-  --project=YOUR_PROJECT_ID
-</code></pre>
-<p>Replace <code>REASONING_ENGINE_ID</code> with the numeric ID from your <code>AGENT_ENGINE_RESOURCE_NAME</code>.</p>
-<p>To list all your instances:</p>
-<pre><code language="language-bash" class="language-bash">gcloud ai reasoning-engines list \
-  --location=us-central1 \
-  --project=YOUR_PROJECT_ID
-</code></pre>
-<h2 is-upgraded>Optional: delete the GCS staging bucket</h2>
-<pre><code language="language-bash" class="language-bash">gcloud storage rm -r gs://your-project-id-content-studio
-</code></pre>
+<p>Navigate to <a href="https://console.cloud.google.com/vertex-ai/agents" target="_blank">Vertex AI → Agent Engine</a> and <a href="https://console.cloud.google.com/run" target="_blank">Cloud Run</a> and confirm your resources are no longer listed.</p>
 <p><strong>Tip:</strong> Set a <a href="https://cloud.google.com/billing/docs/how-to/budgets" target="_blank">budget alert</a> on your GCP project to get notified if charges exceed your expected threshold.</p>
 
 

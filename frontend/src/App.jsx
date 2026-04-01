@@ -57,10 +57,10 @@ function App() {
                   if (data.type === 'status') {
                     setProgress(prev => [...prev, { type: 'info', message: data.message }])
                   } else if (data.type === 'content_piece') {
-                    // A channel just finished — show it immediately
+                    // Accumulate chunks — agents stream output in multiple pieces
                     setContentPieces(prev => ({
                       ...prev,
-                      [data.channel]: data.content
+                      [data.channel]: (prev[data.channel] || '') + data.content
                     }))
                   } else if (data.type === 'event') {
                     setProgress(prev => [...prev, {

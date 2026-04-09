@@ -345,7 +345,13 @@ topic_research_agent = Agent(
     output_key=&#34;blog_topic&#34;,
 )
 </code></pre>
-<aside class="special"><p><strong>Note:</strong> We pass <code>model=MODEL_NAME</code> as a plain string. This lets ADK construct the model object at runtime - using Vertex AI credentials on Agent Engine and your local API key during development - without pickling a pre-configured <code>Gemini</code> object. <code>MODEL_NAME</code>, <code>QUALITY_SCORE_THRESHOLD</code>, and <code>MAX_IMPROVEMENT_ITERATIONS</code> are all defined in <code>agents/config.py</code> and shared across all agents - change the model or thresholds in one place and every agent picks it up.</p>
+<aside class="special"><p><strong>About </strong><strong><code>agents/config.py</code></strong><strong>:</strong> The starter code ships with a shared config file already set up for you:</p>
+<ul>
+<li><code>MODEL_NAME = "gemini-2.5-flash"</code> — the Gemini model every agent uses. Passing it as a plain string lets ADK construct the model at runtime using Vertex AI credentials on Agent Engine and your local API key during development, without pickling a pre-configured object.</li>
+<li><code>QUALITY_SCORE_THRESHOLD</code> — minimum score (default <code>70</code>) a piece of content must reach before the quality loop exits.</li>
+<li><code>MAX_IMPROVEMENT_ITERATIONS</code> — how many rewrite passes the loop agent is allowed (default <code>2</code>).</li>
+</ul>
+<p>All agents import from this single file — change a value here and every agent picks it up automatically.</p>
 </aside>
 <p><strong>Why output_key?</strong> Without it, the agent&#39;s response exists only as a conversation message. With <code>output_key="blog_topic"</code>, ADK automatically writes the response text to <code>session.state["blog_topic"]</code> - making it available to every other agent in the pipeline via <code>&#123;&#123;blog_topic}}</code> templating.</p>
 <h2 is-upgraded>Test the agent</h2>

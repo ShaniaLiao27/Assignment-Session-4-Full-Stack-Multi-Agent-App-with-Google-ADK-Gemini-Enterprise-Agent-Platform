@@ -92,9 +92,9 @@
 <ul>
 <li>The ADK runtime: <strong>Runner</strong>, <strong>Session</strong>, <strong>SessionService</strong>, and the event model</li>
 <li>How <strong>session state</strong> flows between agents via <code>output_key</code> and <code>&#123;&#123;key}}</code> templating</li>
-<li>How to add <strong>callbacks</strong> for observability and content safety guardrails</li>
-<li>How <strong>artifacts</strong> provide persistent file storage across sessions</li>
-<li>How to add <strong>long-term memory</strong> that survives session boundaries</li>
+<li>How to add <strong>callbacks</strong> for observability and content safety guardrails <em>(optional)</em></li>
+<li>How <strong>artifacts</strong> provide persistent file storage across sessions <em>(optional)</em></li>
+<li>How to add <strong>long-term memory</strong> that survives session boundaries <em>(optional)</em></li>
 </ul>
 <p><strong>Multi-agent design with ADK</strong></p>
 <ul>
@@ -107,8 +107,7 @@
 <p><strong>Deployment</strong></p>
 <ul>
 <li>Deploy agents to <strong>Vertex AI Agent Engine</strong> (managed, scalable)</li>
-<li>Package a React + FastAPI app into a single Docker container</li>
-<li>Deploy to <strong>Cloud Run</strong> with real-time <strong>SSE streaming</strong> to the browser</li>
+<li>Package a React + FastAPI app into a single Docker container and deploy to <strong>Cloud Run</strong></li>
 <li>Integrate the frontend with Agent Engine via the ADK <code>RemoteRunner</code></li>
 </ul>
 <h2 is-upgraded>Prerequisites</h2>
@@ -125,22 +124,11 @@
       </google-codelab-step>
     
       <google-codelab-step label="Set Up Your Environment" duration="0">
-        <h2 is-upgraded>Need Google Cloud Credits?</h2>
-<ul>
-<li><strong>If you are attending an instructor-led workshop</strong>: Your instructor will provide you with a credit code. Please use the one they provide.</li>
-<li><strong>If you are working through this Codelab on your own</strong>: <strong>Use a Personal Gmail:</strong> You must use a personal account (e.g., <code>name@gmail.com</code>). Corporate or school-managed accounts will <strong>not</strong> work.</li>
-</ul>
-<p>Steps:</p>
-<ol type="1">
-<li><strong>Go to the credit claim site:</strong> Your instructor will provide the link at the start of the session</li>
-<li><strong>Sign In:</strong> Paste the link into the address bar and sign in with your personal Gmail.</li>
-<li><strong>Accept Terms:</strong> Accept the Google Cloud Platform Terms of Service.</li>
-<li><strong>Verify Credit:</strong> Look for a message confirming that the credit has been applied. <ul>
-<li>*Note: If you are prompted to enter credit card information, you can safely ignore it and close the window.</li>
-</ul>
-</li>
-</ol>
-<p>And you are good to go. Feel free to close the window.</p>
+        <h2 is-upgraded>Google Cloud Credits</h2>
+<aside class="special"><p>If you are attending an <strong>instructor-led workshop</strong>: Your instructor will provide you with a credit code. Please use the one they provide.</p>
+<p>If you are working through this Codelab <strong>on your own</strong>: You must use a personal account (e.g., <code>name@gmail.com</code>). Corporate or school-managed accounts will not work.</p>
+<p>Redeem your free Google Cloud credits using this <a href="https://goo.gle/codelab-todo-credits" target="_blank">link</a>. You can follow the instructions <a href="https://codelabs.developers.google.com/codelabs/cloud-codelab-credits" target="_blank">here</a> to activate the credit and create a new project.</p>
+</aside>
 <h2 is-upgraded>What is Cloud Shell?</h2>
 <p>Cloud Shell is a free browser-based Linux environment with everything pre-installed: <code>gcloud</code>, <code>git</code>, Python, Docker, and more. You don&#39;t need to install anything locally.</p>
 <p>To open Cloud Shell, click the terminal icon in the top-right toolbar of the GCP Console:</p>
@@ -170,8 +158,7 @@
 <pre><code language="language-bash" class="language-bash">git clone -b feature/per-agent-packages https://github.com/Saoussen-CH/google-adk-multi-agent-design-consideration-workshop.git
 cd google-adk-multi-agent-design-consideration-workshop/codelab/starter
 </code></pre>
-<p>This is the <strong><code>codelab</code></strong></p>
-<p><strong> branch</strong> starter code. Key implementation sections are replaced with <code># TODO: #REPLACE-...</code> comments - you&#39;ll fill these in step by step.</p>
+<p>Key implementation sections are replaced with <code># TODO: #REPLACE-...</code> comments - you&#39;ll fill these in step by step.</p>
 <p>👀 <strong>Verify</strong> - your terminal prompt should now show the <code>starter</code> directory:</p>
 <pre><code language="language-text" class="language-text">...google-adk-multi-agent-design-consideration-workshop/codelab/starter$
 </code></pre>
@@ -230,7 +217,8 @@ cloudshell edit .env
 GOOGLE_CLOUD_LOCATION=us-central1
 GOOGLE_GENAI_USE_VERTEXAI=1
 </code></pre>
-<p>💡 <strong>Why no API key?</strong> The <code>gcloud auth application-default login</code> command you ran sets up <strong>Application Default Credentials</strong>. Setting <code>GOOGLE_GENAI_USE_VERTEXAI=1</code> tells ADK to use those credentials with Vertex AI - no separate API key needed. This applies throughout the entire codelab.</p>
+<aside class="special"><p><strong>Why no API key?</strong> The <code>gcloud auth application-default login</code> command you ran sets up <strong>Application Default Credentials</strong>. Setting <code>GOOGLE_GENAI_USE_VERTEXAI=1</code> tells ADK to use those credentials with Vertex AI - no separate API key needed. This applies throughout the entire codelab.</p>
+</aside>
 <p>Save the file (<code>Ctrl+S</code> in the editor), then return to the terminal.</p>
 <h2 is-upgraded>Verify your setup</h2>
 <p>Run:</p>
@@ -242,21 +230,6 @@ GOOGLE_GENAI_USE_VERTEXAI=1
 <p>ADK is installed and importable.</p>
 <aside class="warning"><p><strong>Troubleshooting:</strong> If you see an <code>ImportError</code>, make sure your virtual environment is activated (<code>source .venv/bin/activate</code>) and re-run <code>pip install -r requirements.txt</code>.</p>
 </aside>
-<h2 is-upgraded>Using the ADK Dev UI in Cloud Shell</h2>
-<p>Throughout this codelab, you&#39;ll use <code>adk web</code> to interactively test each agent as you build it. Because you&#39;re running in Cloud Shell, you access the UI via <strong>Web Preview</strong> instead of <code>localhost</code>.</p>
-<p><strong>Each time you run adk web:</strong></p>
-<p>Start the dev server from your project root (the <code>starter/</code> directory):</p>
-<pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
-</code></pre>
-<p>Open the Web Preview:</p>
-<ol type="1">
-<li>Click the <strong>Web Preview</strong> button (the eye icon <code>👁</code>) in the Cloud Shell toolbar</li>
-<li>Select <strong>&#34;Preview on port 8080&#34;</strong></li>
-</ol>
-<p>This opens the ADK Dev UI in a new browser tab.</p>
-<aside class="special"><p>All <code>http://localhost:8080</code> references in this codelab map to this Web Preview URL.</p>
-</aside>
-<p>To stop the server, press <code>Ctrl+C</code> in the terminal before moving to the next step.</p>
 
 
       </google-codelab-step>
@@ -302,7 +275,7 @@ async for event in runner.run_async(
 <p>When you call <code>runner.run_async()</code>, ADK yields a stream of <strong>events</strong>. Each event represents something that happened: a model call, a tool invocation, an agent transfer, or a final response. The last event with <code>is_final_response() == True</code> carries the agent&#39;s answer.</p>
 <p>This event stream is what the ADK Dev UI (<code>adk web</code>) displays in its Events panel - and what the FastAPI backend in the <strong>Full-Stack Cloud Run Deployment</strong> section consumes to stream results to the React frontend.</p>
 <h2 is-upgraded>How <code>adk web</code> fits in</h2>
-<p><code>adk web</code> discovers your <code>root_agent</code> variable (in <code>content_creation_studio/agent.py</code>), wraps it in a <code>Runner</code> with an <code>InMemorySessionService</code>, and serves a web UI. It&#39;s the fastest way to test agents during development.</p>
+<p><code>adk web</code> is ADK&#39;s built-in development server. It scans the current directory for agent packages, wraps each discovered agent in a <code>Runner</code> with an <code>InMemorySessionService</code>, and serves a browser-based chat UI where you can send messages and inspect the full event stream in real time.</p>
 <p>You don&#39;t need to write <code>Runner</code> code yourself in this codelab - <code>adk web</code> handles it. But understanding what happens under the hood will help you interpret the Events panel and debug issues.</p>
 <h2 is-upgraded>The execution flow</h2>
 <p>Here is what happens every time you send a message to an ADK agent:</p>
@@ -376,12 +349,18 @@ topic_research_agent = Agent(
 </aside>
 <p><strong>Why output_key?</strong> Without it, the agent&#39;s response exists only as a conversation message. With <code>output_key="blog_topic"</code>, ADK automatically writes the response text to <code>session.state["blog_topic"]</code> - making it available to every other agent in the pipeline via <code>&#123;&#123;blog_topic}}</code> templating.</p>
 <h2 is-upgraded>Test the agent</h2>
-<aside class="special"><p><strong>How testing works throughout this codelab:</strong> Each individual agent is its own package in the <code>starter/</code> directory. <code>adk web</code> discovers all of them automatically — just select the one you want to test from the dropdown. Workflow agents (<code>SequentialAgent</code>, <code>LoopAgent</code>, <code>ParallelAgent</code>) are assembled in <code>content_creation_studio/agent.py</code> and tested by temporarily setting <code>root_agent</code> there.</p>
-</aside>
-<p>Start the dev server:</p>
+<p><code>adk web</code> is ADK&#39;s built-in dev server. It discovers every agent package in your directory and serves a chat UI where you can test them interactively.</p>
+<p>Start it from the <code>starter/</code> directory:</p>
 <pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
 </code></pre>
-<p>Use the Cloud Shell Web Preview on port 8080 to open the ADK Dev UI (see <strong>Using the ADK Dev UI in Cloud Shell</strong> for how). Select <code>topic_research_agent</code> from the dropdown, then type:</p>
+<p>Then open it in your browser via <strong>Web Preview</strong>:</p>
+<ol type="1">
+<li>Click the <strong>Web Preview</strong> button (top-right of the Cloud Shell toolbar)</li>
+<li>Select <strong>&#34;Preview on port 8080&#34;</strong></li>
+</ol>
+<p>A new browser tab opens with the ADK Dev UI. Select <code>topic_research_agent</code> from the dropdown, then type:</p>
+<aside class="special"><p><strong>How testing works throughout this codelab:</strong> Each individual agent is its own package — <code>adk web</code> discovers all of them automatically. Just select the one you want from the dropdown. Workflow agents (<code>SequentialAgent</code>, <code>LoopAgent</code>, <code>ParallelAgent</code>) are assembled in <code>content_creation_studio/agent.py</code> and require a temporary <code>root_agent</code> change to test — the instructions will tell you when.</p>
+</aside>
 <pre><code language="language-text" class="language-text">Find the best blog topic about sustainable packaging for eco-conscious millennials
 </code></pre>
 <aside class="special"><p><strong>What to expect:</strong> This agent only researches and outputs a <strong>single blog title</strong> - it does not write the full blog. The full pipeline (draft → quality loop → publish-ready post) is assembled in later steps. You are just testing one piece of it here.</p>
@@ -707,12 +686,8 @@ coordinator/orchestrator
     sub_agents=[topic_research_agent, content_drafter_agent],
 )
 </code></pre>
-<p>For testing this step, temporarily update the last line of <code>content_creation_studio/agent.py</code>:</p>
-<pre><code language="language-python" class="language-python"># Change this:
-root_agent = master_orchestrator_agent
-
-# To this:
-root_agent = research_and_draft_workflow
+<p>At the bottom of <code>content_creation_studio/agent.py</code>, set:</p>
+<pre><code language="language-python" class="language-python">root_agent = research_and_draft_workflow
 </code></pre>
 <h2 is-upgraded>Test the sequential workflow</h2>
 <pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
@@ -726,7 +701,7 @@ current_content → &#34;# 10 Sustainable Packaging Innovations...\n\n...&#34;
 </code></pre>
 <aside class="special"><p><strong>Tip:</strong> Click any event in the Events panel to inspect the exact request and response sent to the model at that step.</p>
 </aside>
-<aside class="warning"><p><strong>Before moving on:</strong> Remove the temporary <code>root_agent = research_and_draft_workflow</code> line from <code>content_creation_studio/agent.py</code> and restore <code>root_agent = master_orchestrator_agent</code>.</p>
+<aside class="special"><p><strong>Keep </strong><strong><code>root_agent = research_and_draft_workflow</code></strong><strong> for now.</strong> You&#39;ll update it in the next step as you build the quality loop.</p>
 </aside>
 <aside class="special"><p><strong>Pattern in practice: </strong><code>research_and_draft_workflow</code> is a classic <strong>workflow-driven</strong> pipeline - topic research <em>always</em> runs before drafting, with no LLM making that routing decision. This is exactly the &#34;deterministic steps → Sequential&#34; case from the architecture decision framework you reviewed earlier.</p>
 </aside>
@@ -824,12 +799,11 @@ quality_improvement_loop = LoopAgent(
 )
 </code></pre>
 <h2 is-upgraded>Test with the sequential + loop pipeline</h2>
-<p>Update <code>content_creation_studio/agent.py</code> to test the combined first two phases:</p>
-<pre><code language="language-python" class="language-python">two_phase_pipeline = SequentialAgent(
+<p>Update the bottom of <code>content_creation_studio/agent.py</code>:</p>
+<pre><code language="language-python" class="language-python">root_agent = SequentialAgent(
     name=&#34;two_phase_pipeline&#34;,
     sub_agents=[research_and_draft_workflow, quality_improvement_loop],
 )
-root_agent = two_phase_pipeline
 </code></pre>
 <p>Run <code>adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
 <pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
@@ -843,7 +817,7 @@ root_agent = two_phase_pipeline
   📊 Model output for quality_checker_agent: ~45 words
 ■ AGENT DONE: quality_checker_agent (2.8s)
 </code></pre>
-<aside class="warning"><p><strong>Before moving on:</strong> Remove the temporary <code>root_agent = two_phase_pipeline</code> line from <code>content_creation_studio/agent.py</code> and restore <code>root_agent = master_orchestrator_agent</code>.</p>
+<aside class="special"><p><strong>Keep this as </strong><strong><code>root_agent</code></strong><strong> for now.</strong> You&#39;ll replace it with the three-phase pipeline in the next step.</p>
 </aside>
 
 
@@ -948,12 +922,11 @@ parallel_content_creation = ParallelAgent(
 )
 </code></pre>
 <h2 is-upgraded>Test</h2>
-<p>The parallel agents read <code>&#123;&#123;current_content}}</code> from session state - they can&#39;t run standalone. Test them as a three-phase pipeline by temporarily updating <code>content_creation_studio/agent.py</code>:</p>
-<pre><code language="language-python" class="language-python">three_phase_pipeline = SequentialAgent(
+<p>The parallel agents read <code>&#123;&#123;current_content}}</code> from session state - they can&#39;t run standalone. Update <code>root_agent</code> in <code>content_creation_studio/agent.py</code> to wire all three phases together:</p>
+<pre><code language="language-python" class="language-python">root_agent = SequentialAgent(
     name=&#34;three_phase_pipeline&#34;,
     sub_agents=[research_and_draft_workflow, quality_improvement_loop, parallel_content_creation],
 )
-root_agent = three_phase_pipeline
 </code></pre>
 <p>Run <code>adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
 <pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
@@ -964,7 +937,7 @@ social_media_posts → &#34;**LinkedIn Post**\n...&#34;
 email_newsletter   → &#34;**Subject Line:** ...&#34;
 seo_metadata       → &#34;**Meta Title:** ...&#34;
 </code></pre>
-<aside class="warning"><p><strong>Before moving on:</strong> Remove the <code>three_phase_pipeline</code> block from <code>content_creation_studio/agent.py</code> and restore <code>root_agent = master_orchestrator_agent</code>.</p>
+<aside class="special"><p><strong>Next step:</strong> You&#39;ll replace this with <code>full_content_workflow</code> in the next section - no need to revert.</p>
 </aside>
 
 
@@ -973,6 +946,7 @@ seo_metadata       → &#34;**Meta Title:** ...&#34;
       <google-codelab-step label="Assemble the Full Pipeline" duration="0">
         <p>Now compose all three phases into the complete content workflow.</p>
 <h2 is-upgraded>Fill in the full workflow</h2>
+<p>Replace the temporary <code>root_agent</code> at the bottom of <code>content_creation_studio/agent.py</code> with the complete pipeline:</p>
 <pre><code language="language-python" class="language-python"># content_creation_studio/agent.py
 
 full_content_workflow = SequentialAgent(
@@ -983,6 +957,8 @@ full_content_workflow = SequentialAgent(
         parallel_content_creation,     # Phase 3: 4 formats in parallel
     ],
 )
+
+root_agent = full_content_workflow
 </code></pre>
 <p>This is a <code>SequentialAgent</code> wrapping other <code>SequentialAgent</code>, <code>LoopAgent</code>, and <code>ParallelAgent</code> instances. ADK treats all agent types uniformly as <code>sub_agents</code>, so nesting works at any depth.</p>
 <p>The complete pipeline:</p>
@@ -1222,33 +1198,34 @@ def after_model_callback(
         <p>You&#39;ve worked with one data persistence layer so far: <strong>session state</strong> (lives for one conversation, passed between agents via <code>output_key</code> and <code>&#123;&#123;key}}</code>). Artifacts are the second layer: named, versioned file storage that outlasts a session. A third layer - <strong>long-term memory</strong> - is covered in the next section.</p>
 <h2 is-upgraded>The three-layer persistence model</h2>
 <table>
-<tr><td colspan="1" rowspan="1"><p>Layer</p>
-</td><td colspan="1" rowspan="1"><p>Scope</p>
-</td><td colspan="1" rowspan="1"><p>Content</p>
-</td><td colspan="1" rowspan="1"><p>How to write</p>
-</td><td colspan="1" rowspan="1"><p>How to read</p>
-</td><td colspan="1" rowspan="1"><p>Use case</p>
+<tr><td colspan="1" rowspan="1"></td><td colspan="1" rowspan="1"><p><strong>State</strong></p>
+</td><td colspan="1" rowspan="1"><p><strong>Artifacts</strong></p>
+</td><td colspan="1" rowspan="1"><p><strong>Memory</strong></p>
 </td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>State</strong></p>
+<tr><td colspan="1" rowspan="1"><p><strong>Scope</strong></p>
 </td><td colspan="1" rowspan="1"><p>One conversation</p>
-</td><td colspan="1" rowspan="1"><p>Key-value pairs</p>
-</td><td colspan="1" rowspan="1"><p><code>output_key</code> or direct state mutation</p>
-</td><td colspan="1" rowspan="1"><p><code>&#123;&#123;key}}</code> templating</p>
-</td><td colspan="1" rowspan="1"><p>Agent-to-agent data passing within a pipeline</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Artifacts</strong></p>
-</td><td colspan="1" rowspan="1"><p>One session (or across sessions with user: prefix)</p>
-</td><td colspan="1" rowspan="1"><p>Files (text, binary)</p>
-</td><td colspan="1" rowspan="1"><p><code>tool_context.save_artifact()</code></p>
-</td><td colspan="1" rowspan="1"><p><code>tool_context.load_artifact()</code></p>
-</td><td colspan="1" rowspan="1"><p>Saving generated files (e.g., blog_post.md)</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Memory</strong></p>
+</td><td colspan="1" rowspan="1"><p>One session (or cross-session with <code>user:</code> prefix)</p>
 </td><td colspan="1" rowspan="1"><p>All conversations</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Content</strong></p>
+</td><td colspan="1" rowspan="1"><p>Key-value pairs</p>
+</td><td colspan="1" rowspan="1"><p>Files (text, binary)</p>
 </td><td colspan="1" rowspan="1"><p>Conversation summaries</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Write</strong></p>
+</td><td colspan="1" rowspan="1"><p><code>output_key</code></p>
+</td><td colspan="1" rowspan="1"><p><code>tool_context.save_artifact()</code></p>
 </td><td colspan="1" rowspan="1"><p><code>memory_service.add_session_to_memory()</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Read</strong></p>
+</td><td colspan="1" rowspan="1"><p><code>&#123;&#123;key}}</code> templating</p>
+</td><td colspan="1" rowspan="1"><p><code>tool_context.load_artifact()</code></p>
 </td><td colspan="1" rowspan="1"><p><code>PreloadMemoryTool</code></p>
-</td><td colspan="1" rowspan="1"><p>Cross-session continuity (&#34;last time you asked about...&#34;)</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Use case</strong></p>
+</td><td colspan="1" rowspan="1"><p>Agent-to-agent data passing</p>
+</td><td colspan="1" rowspan="1"><p>Saving generated files</p>
+</td><td colspan="1" rowspan="1"><p>Cross-session continuity</p>
 </td></tr>
 </table>
 <p>Choose based on lifetime: state for within-session coordination, artifacts for persisting files, memory for cross-session continuity.</p>
@@ -1321,25 +1298,34 @@ await tool_context.save_artifact(filename=&#34;user:blog_post.md&#34;, artifact=
         <p>Your agents currently remember nothing between sessions. Let&#39;s fix that.</p>
 <p>You&#39;ve already seen the full three-layer persistence model in the <strong>Artifacts</strong> section. Memory is the third layer - it extends beyond the current session:</p>
 <table>
-<tr><td colspan="1" rowspan="1"><p>Layer</p>
-</td><td colspan="1" rowspan="1"><p>Scope</p>
-</td><td colspan="1" rowspan="1"><p>How to write</p>
-</td><td colspan="1" rowspan="1"><p>How to read</p>
+<tr><td colspan="1" rowspan="1"></td><td colspan="1" rowspan="1"><p><strong>State</strong></p>
+</td><td colspan="1" rowspan="1"><p><strong>Artifacts</strong></p>
+</td><td colspan="1" rowspan="1"><p><strong>Memory</strong></p>
 </td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Session state</strong></p>
+<tr><td colspan="1" rowspan="1"><p><strong>Scope</strong></p>
 </td><td colspan="1" rowspan="1"><p>One conversation</p>
-</td><td colspan="1" rowspan="1"><p><code>output_key</code></p>
-</td><td colspan="1" rowspan="1"><p><code>&#123;&#123;key}}</code> templating</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Artifacts</strong></p>
 </td><td colspan="1" rowspan="1"><p>One session (or cross-session with <code>user:</code> prefix)</p>
-</td><td colspan="1" rowspan="1"><p><code>tool_context.save_artifact()</code></p>
-</td><td colspan="1" rowspan="1"><p><code>tool_context.load_artifact()</code></p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Memory</strong></p>
 </td><td colspan="1" rowspan="1"><p>All conversations</p>
-</td><td colspan="1" rowspan="1"><p><code>memory_service.add_session_to_memory(session)</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Content</strong></p>
+</td><td colspan="1" rowspan="1"><p>Key-value pairs</p>
+</td><td colspan="1" rowspan="1"><p>Files (text, binary)</p>
+</td><td colspan="1" rowspan="1"><p>Conversation summaries</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Write</strong></p>
+</td><td colspan="1" rowspan="1"><p><code>output_key</code></p>
+</td><td colspan="1" rowspan="1"><p><code>tool_context.save_artifact()</code></p>
+</td><td colspan="1" rowspan="1"><p><code>memory_service.add_session_to_memory()</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Read</strong></p>
+</td><td colspan="1" rowspan="1"><p><code>&#123;&#123;key}}</code> templating</p>
+</td><td colspan="1" rowspan="1"><p><code>tool_context.load_artifact()</code></p>
 </td><td colspan="1" rowspan="1"><p><code>PreloadMemoryTool</code></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Use case</strong></p>
+</td><td colspan="1" rowspan="1"><p>Agent-to-agent data passing</p>
+</td><td colspan="1" rowspan="1"><p>Saving generated files</p>
+</td><td colspan="1" rowspan="1"><p>Cross-session continuity</p>
 </td></tr>
 </table>
 <p>The <strong>write side</strong> is already handled: the <code>after_agent_callback</code> you implemented in the <strong>Callbacks</strong> section calls <code>await memory_service.add_session_to_memory(session)</code> after every agent turn.</p>

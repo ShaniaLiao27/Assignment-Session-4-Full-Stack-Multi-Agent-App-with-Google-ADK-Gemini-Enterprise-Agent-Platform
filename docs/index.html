@@ -329,7 +329,8 @@ Your code / adk web UI    ← reads events, displays the result
 <pre><code language="language-python" class="language-python"># topic_research_agent/agent.py
 from google.adk.agents import Agent
 from google.adk.tools import google_search
-from config import MODEL_NAME
+
+MODEL_NAME = &#34;gemini-2.5-flash&#34;
 
 topic_research_agent = Agent(
     name=&#34;topic_research_agent&#34;,
@@ -345,13 +346,7 @@ topic_research_agent = Agent(
     output_key=&#34;blog_topic&#34;,
 )
 </code></pre>
-<aside class="special"><p><strong>About </strong><strong><code>agents/config.py</code></strong><strong>:</strong> The starter code ships with a shared config file already set up for you:</p>
-<ul>
-<li><code>MODEL_NAME = "gemini-2.5-flash"</code> — the Gemini model every agent uses. Passing it as a plain string lets ADK construct the model at runtime using Vertex AI credentials on Agent Engine and your local API key during development, without pickling a pre-configured object.</li>
-<li><code>QUALITY_SCORE_THRESHOLD</code> — minimum score (default <code>70</code>) a piece of content must reach before the quality loop exits.</li>
-<li><code>MAX_IMPROVEMENT_ITERATIONS</code> — how many rewrite passes the loop agent is allowed (default <code>2</code>).</li>
-</ul>
-<p>All agents import from this single file — change a value here and every agent picks it up automatically.</p>
+<aside class="special"><p><strong>Why </strong><strong><code>MODEL_NAME = "gemini-2.5-flash"</code></strong><strong> is defined inline:</strong> Each agent declares its own <code>MODEL_NAME</code> constant rather than importing from a shared file. This keeps every agent self-contained — <code>adk web</code> can load any single agent in isolation without needing other modules on the path. Passing it as a plain string (not a pre-configured <code>Gemini</code> object) lets ADK construct the model at runtime using Vertex AI credentials on Agent Engine and your local API key during development.</p>
 </aside>
 <p><strong>Why output_key?</strong> Without it, the agent&#39;s response exists only as a conversation message. With <code>output_key="blog_topic"</code>, ADK automatically writes the response text to <code>session.state["blog_topic"]</code> - making it available to every other agent in the pipeline via <code>&#123;&#123;blog_topic}}</code> templating.</p>
 <h2 is-upgraded>Test the agent</h2>
@@ -375,14 +370,18 @@ topic_research_agent = Agent(
 <pre><code language="language-text" class="language-text">&#34;10 Sustainable Packaging Innovations Winning Over Eco-Conscious Millennials in 2025&#34;
 </code></pre>
 <p>In the <strong>State</strong> tab, you&#39;ll see <code>blog_topic</code> appear with that value. In the <strong>Events</strong> panel, click any event to inspect the exact model request and response.</p>
-<p>Press <code>Ctrl+C</code> to stop the server.</p>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>
     
       <google-codelab-step label="Building Custom Tools" duration="0">
-        <p>Open the tools file in Cloud Shell Editor:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/tools.py
+        <p>Each agent that uses custom tools has its own <code>tools.py</code> inside its package. Open them in Cloud Shell Editor:</p>
+<pre><code language="language-bash" class="language-bash">cloudshell edit agents/content_analyzer_agent/tools.py
+cloudshell edit agents/quality_checker_agent/tools.py
+cloudshell edit agents/content_improver_agent/tools.py
 </code></pre>
 <p>The tools are already implemented - your job in this step is to read and understand them before using them in later steps.</p>
 <h2 is-upgraded>How ADK tools work</h2>
@@ -416,8 +415,8 @@ agent = Agent(
 )
 </code></pre>
 <p>You&#39;ll see <code>FunctionTool</code> used in the agent files starting from the <strong>Quality Loop</strong> section.</p>
-<h2 is-upgraded>Walk through the tools in <code>tools.py</code></h2>
-<p>Open <code>agents/tools.py</code> and read through each function. Here is what each tool does and why it exists:</p>
+<h2 is-upgraded>Walk through the tools</h2>
+<p>Each agent owns its tools — open each file and read through the functions. Here is what each tool does and why it exists:</p>
 <table>
 <tr><td colspan="1" rowspan="1"><p>Tool</p>
 </td><td colspan="1" rowspan="1"><p>Returns</p>
@@ -447,13 +446,14 @@ agent = Agent(
 <aside class="special"><p><strong>Key concept: </strong><code>exit_loop</code> sets <code>tool_context.actions.escalate = True</code> - the ADK signal to stop a <code>LoopAgent</code> early. You&#39;ll see exactly how this is used in the <strong>Quality Loop</strong> section.</p>
 </aside>
 <h2 is-upgraded>Your turn: implement <code>count_words</code></h2>
-<p>One tool is left for you to implement so you experience writing an ADK tool yourself. Find <code>count_words</code> - it has a <code># TODO</code> comment. Replace the <code>pass</code> with:</p>
+<p>One tool is left for you to implement so you experience writing an ADK tool yourself. Open <code>agents/content_analyzer_agent/tools.py</code> and find <code>count_words</code> - it has a <code># TODO</code> comment. Replace the <code>pass</code> with:</p>
 <pre><code language="language-python" class="language-python">    count = len(text.split())
     print(f&#34;   Result: {count} words&#34;)
     return count
 </code></pre>
 <h2 is-upgraded>Verify</h2>
 <pre><code language="language-bash" class="language-bash">python -c &#34;
+import sys; sys.path.insert(0, &#39;agents/content_analyzer_agent&#39;)
 from tools import count_words, calculate_readability_score
 print(count_words(&#39;Hello world this is a test&#39;))
 print(calculate_readability_score(&#39;The cat sat on the mat. It was a good day.&#39;))
@@ -696,7 +696,7 @@ coordinator/orchestrator
 <pre><code language="language-python" class="language-python">root_agent = research_and_draft_workflow
 </code></pre>
 <h2 is-upgraded>Test the sequential workflow</h2>
-<pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
+<pre><code language="language-bash" class="language-bash">cd agents &amp;&amp; adk web --port 8080 --reload_agents
 </code></pre>
 <p>Enter the prompt:</p>
 <pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
@@ -711,6 +711,9 @@ current_content → &#34;# 10 Sustainable Packaging Innovations...\n\n...&#34;
 </aside>
 <aside class="special"><p><strong>Pattern in practice: </strong><code>research_and_draft_workflow</code> is a classic <strong>workflow-driven</strong> pipeline - topic research <em>always</em> runs before drafting, with no LLM making that routing decision. This is exactly the &#34;deterministic steps → Sequential&#34; case from the architecture decision framework you reviewed earlier.</p>
 </aside>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>
@@ -811,7 +814,7 @@ quality_improvement_loop = LoopAgent(
     sub_agents=[research_and_draft_workflow, quality_improvement_loop],
 )
 </code></pre>
-<p>Run <code>adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
+<p>Run <code>cd agents && adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
 <pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
 </code></pre>
 <p>In the Events panel you&#39;ll see multiple passes: research → draft → quality check → improve → quality check → (exit or max reached). In the terminal, you&#39;ll see output like:</p>
@@ -825,6 +828,9 @@ quality_improvement_loop = LoopAgent(
 </code></pre>
 <aside class="special"><p><strong>Keep this as </strong><strong><code>root_agent</code></strong><strong> for now.</strong> You&#39;ll replace it with the three-phase pipeline in the next step.</p>
 </aside>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>
@@ -934,7 +940,7 @@ parallel_content_creation = ParallelAgent(
     sub_agents=[research_and_draft_workflow, quality_improvement_loop, parallel_content_creation],
 )
 </code></pre>
-<p>Run <code>adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
+<p>Run <code>cd agents && adk web --port 8080 --reload_agents</code> and enter the prompt:</p>
 <pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
 </code></pre>
 <p>All four keys should appear in the State tab simultaneously after the research → draft → quality loop completes:</p>
@@ -945,6 +951,9 @@ seo_metadata       → &#34;**Meta Title:** ...&#34;
 </code></pre>
 <aside class="special"><p><strong>Next step:</strong> You&#39;ll replace this with <code>full_content_workflow</code> in the next section - no need to revert.</p>
 </aside>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>
@@ -980,8 +989,9 @@ root_agent = full_content_workflow
     ↓ [blog + social + email + seo] all at once
 </code></pre>
 <h2 is-upgraded>Verify the structure</h2>
-<pre><code language="language-python" class="language-python">python -c &#34;
-from agents.orchestrator_agent.agent import full_content_workflow
+<pre><code language="language-bash" class="language-bash">python -c &#34;
+import sys; sys.path.insert(0, &#39;agents&#39;)
+from orchestrator_agent.agent import full_content_workflow
 print([a.name for a in full_content_workflow.sub_agents])
 &#34;
 </code></pre>
@@ -999,6 +1009,11 @@ print([a.name for a in full_content_workflow.sub_agents])
 </code></pre>
 <p>Fill it in with:</p>
 <pre><code language="language-python" class="language-python"># content_analyzer_agent/agent.py
+from google.adk.agents import Agent
+from google.adk.tools import FunctionTool
+from .tools import count_words, calculate_readability_score, generate_hashtags
+
+MODEL_NAME = &#34;gemini-2.5-flash&#34;
 
 content_analyzer_agent = Agent(
     name=&#34;content_analyzer_agent&#34;,
@@ -1056,7 +1071,7 @@ root_agent = master_orchestrator_agent
 <aside class="special"><p><strong>sub_agents vs AgentTool:</strong> Using <code>sub_agents=</code> means inner agent events propagate to the <code>Runner</code> and are visible externally (needed for the FastAPI SSE backend to detect which channel agent produced which output). Using <code>AgentTool</code> wraps the agent as an opaque tool call - inner events are hidden. See the <strong>Agent Teams: sub_agents vs AgentTool</strong> section for the full trade-off discussion.</p>
 </aside>
 <h2 is-upgraded>Test routing</h2>
-<pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
+<pre><code language="language-bash" class="language-bash">cd agents &amp;&amp; adk web --port 8080 --reload_agents
 </code></pre>
 <p><strong>Test the analyzer route:</strong></p>
 <pre><code language="language-text" class="language-text">Analyze this text: Artificial intelligence is transforming the way businesses operate.
@@ -1070,13 +1085,16 @@ Hashtags: #ArtificialIntelligence #BusinessTransformation #AI #Technology #Innov
 <pre><code language="language-text" class="language-text">Create content about sustainable packaging for eco-conscious millennials, tone: inspiring
 </code></pre>
 <p>You should see it route to <code>full_content_workflow</code> and run the full three-phase pipeline. All four content keys will appear in the State tab when complete.</p>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>
     
       <google-codelab-step label="Callbacks: Observability &amp; Safety (Optional)" duration="0">
         <p>Callbacks let you intercept agent execution at six points without modifying agent logic. Open the callbacks file:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/callbacks.py
+<pre><code language="language-bash" class="language-bash">cloudshell edit agents/orchestrator_agent/callbacks.py
 </code></pre>
 <p>The imports, type annotations, <code>_extract_session_id</code> helper, and <code>BLOCKED_TOPICS</code> list are already provided - fill in the four function bodies.</p>
 <h2 is-upgraded>The six callback hooks</h2>
@@ -1185,7 +1203,7 @@ def after_model_callback(
     return None  # Use the model response as-is
 </code></pre>
 <h2 is-upgraded>Test the guardrail</h2>
-<pre><code language="language-bash" class="language-bash">adk web --port 8080 --reload_agents
+<pre><code language="language-bash" class="language-bash">cd agents &amp;&amp; adk web --port 8080 --reload_agents
 </code></pre>
 <p>Enter:</p>
 <pre><code language="language-text" class="language-text">Create content about violence and illegal activities
@@ -1195,6 +1213,9 @@ def after_model_callback(
 ▶ AGENT START: master_orchestrator_agent
 ──────────────────────────────────────────────────
   🛡️ GUARDRAIL: Blocked request containing &#39;violence&#39;
+</code></pre>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
 </code></pre>
 
 
@@ -1337,7 +1358,7 @@ await tool_context.save_artifact(filename=&#34;user:blog_post.md&#34;, artifact=
 <p>The <strong>write side</strong> is already handled: the <code>after_agent_callback</code> you implemented in the <strong>Callbacks</strong> section calls <code>await memory_service.add_session_to_memory(session)</code> after every agent turn.</p>
 <p>The <strong>read side</strong> is <code>PreloadMemoryTool</code> - ADK automatically invokes it before each turn to inject relevant past sessions into the model&#39;s context. You already wired it into <code>master_orchestrator_agent</code> in the <strong>Master Orchestrator</strong> section, so no code changes are needed here.</p>
 <h2 is-upgraded>Test cross-session memory</h2>
-<p>Run <code>adk web --port 8080 --reload_agents</code> and open two separate sessions:</p>
+<p>Run <code>cd agents && adk web --port 8080 --reload_agents</code> and open two separate sessions:</p>
 <p><strong>Session 1:</strong></p>
 <pre><code language="language-text" class="language-text">Create content about Python async programming for backend developers
 </code></pre>
@@ -1352,6 +1373,9 @@ to create more content on that topic or explore something new?
 </code></pre>
 <aside class="special"><p><strong>Production note: </strong><code>InMemoryMemoryService</code> is local and disappears when the process restarts. For production, use Vertex AI Memory Bank by passing <code>memory_bank_resource_name</code> to <code>agent_engines.create()</code>.</p>
 </aside>
+<p>Press <code>Ctrl+C</code> to stop the server, then return to <code>starter/</code>:</p>
+<pre><code language="language-bash" class="language-bash">cd ..
+</code></pre>
 
 
       </google-codelab-step>

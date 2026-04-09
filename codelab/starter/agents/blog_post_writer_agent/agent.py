@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from config import MODEL_NAME
+MODEL_NAME = "gemini-2.5-flash"
 
 blog_post_writer_agent = Agent(
     name="blog_post_writer_agent",

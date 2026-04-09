@@ -1,6 +1,6 @@
 from google.adk.agents import Agent
-from tools import exit_loop, QUALITY_THRESHOLD_MET
-from config import MODEL_NAME
+from .tools import exit_loop, QUALITY_THRESHOLD_MET
+MODEL_NAME = "gemini-2.5-flash"
 
 content_improver_agent = Agent(
     name="content_improver_agent",

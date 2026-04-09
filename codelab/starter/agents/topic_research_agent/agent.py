@@ -1,6 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.tools import google_search
-from config import MODEL_NAME
+MODEL_NAME = "gemini-2.5-flash"
 
 topic_research_agent = Agent(
     name="topic_research_agent",

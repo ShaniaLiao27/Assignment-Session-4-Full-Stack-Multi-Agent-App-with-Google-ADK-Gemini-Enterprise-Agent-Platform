@@ -6,8 +6,10 @@ load_dotenv()
 
 from google.adk.agents import SequentialAgent, LoopAgent, ParallelAgent, Agent
 from google.adk.tools import preload_memory_tool
-from config import MODEL_NAME, MAX_IMPROVEMENT_ITERATIONS
-from callbacks import (
+MODEL_NAME = "gemini-2.5-flash"
+MAX_IMPROVEMENT_ITERATIONS = int(os.getenv("MAX_IMPROVEMENT_ITERATIONS", "2"))
+
+from .callbacks import (
     before_agent_callback,
     after_agent_callback,
     before_model_callback,

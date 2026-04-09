@@ -1,9 +1,6 @@
 import re
 from typing import List
-from google.adk.tools import ToolContext
 
-
-# --- Content Analysis Tools ---
 
 def count_words(text: str) -> int:
     """Counts the number of words in the provided text."""
@@ -82,53 +79,3 @@ def generate_hashtags(text: str, count: int) -> List[str]:
 
     print(f"   Result: {', '.join(hashtags)}")
     return hashtags
-
-
-# --- Quality Check Tool ---
-
-def calculate_content_quality_score(
-    word_count: int,
-    readability_score: float,
-    has_headings: bool,
-    has_conclusion: bool
-) -> dict:
-    """Calculates overall content quality score based on multiple factors."""
-    print(f"🔧 Tool: Calculating quality score...")
-    if word_count < 500:
-        word_score = 30
-    elif word_count < 800:
-        word_score = 60
-    elif word_count <= 2000:
-        word_score = 100
-    else:
-        word_score = 80
-
-    read_score = min(100, readability_score * 1.5) if readability_score > 0 else 40
-
-    structure_score = 0
-    if has_headings:
-        structure_score += 50
-    if has_conclusion:
-        structure_score += 50
-
-    overall_score = (word_score * 0.3) + (read_score * 0.3) + (structure_score * 0.4)
-
-    result = {
-        "overall_score": round(overall_score, 2),
-        "word_count": word_count,
-        "meets_threshold": overall_score >= 70
-    }
-    print(f"   Result: {result['overall_score']}/100 (Threshold: {'MET' if result['meets_threshold'] else 'NOT MET'})")
-    return result
-
-
-# --- Loop Control ---
-
-QUALITY_THRESHOLD_MET = "QUALITY_THRESHOLD_MET"
-
-
-def exit_loop(tool_context: ToolContext):
-    """Terminates the improvement loop when quality meets threshold."""
-    print(f"🔧 Tool: Quality approved. Terminating loop...")
-    tool_context.actions.escalate = True
-    return {"result": "Quality threshold met. Content approved."}

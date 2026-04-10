@@ -1479,8 +1479,11 @@ gcloud storage buckets create gs://$GOOGLE_CLOUD_PROJECT-content-studio --locati
 <p>This packages your <code>agents/</code> module, uploads it to GCS, and deploys it to Agent Engine. The process takes 5-10 minutes. When complete, it prints a resource name like:</p>
 <pre><code language="language-text" class="language-text">projects/123456/locations/us-central1/reasoningEngines/789012345
 </code></pre>
-<p>Copy this into your <code>.env</code>:</p>
-<pre><code language="language-bash" class="language-bash">echo &#34;AGENT_ENGINE_RESOURCE_NAME=projects/123456/locations/us-central1/reasoningEngines/789012345&#34; &gt;&gt; .env
+<p>Open your <code>.env</code> and add the resource name:</p>
+<pre><code language="language-bash" class="language-bash">cloudshell edit .env
+</code></pre>
+<p>Add this line (replace with your actual resource name from the output above):</p>
+<pre><code language="language-text" class="language-text">AGENT_ENGINE_RESOURCE_NAME=projects/YOUR_PROJECT_ID/locations/us-central1/reasoningEngines/YOUR_ENGINE_ID
 </code></pre>
 <h2 is-upgraded>Test the remote agent</h2>
 <pre><code language="language-bash" class="language-bash">python deployment/deploy.py --action test_remote

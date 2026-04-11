@@ -7,7 +7,7 @@ quality_checker_agent = Agent(
     name="quality_checker_agent",
     model=MODEL_NAME,
     instruction=f"""
-    You are a content quality analyst. Analyze: {{{{current_content}}}}
+    You are a content quality analyst. Analyze: {{current_content}}
 
     Your job:
     1. Count approximate word count

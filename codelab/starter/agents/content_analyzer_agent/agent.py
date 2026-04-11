@@ -7,21 +7,19 @@ content_analyzer_agent = Agent(
     name="content_analyzer_agent",
     model=MODEL_NAME,
     instruction="""
-    TODO: #REPLACE-content-analyzer-instruction
-    Write an instruction that:
-    1. Tells the agent it is a content analysis expert
-    2. Uses its three tools to analyze the provided text:
-       - count_words to count the total words
-       - calculate_readability_score to measure readability
-       - generate_hashtags with count=5 to suggest relevant hashtags
-    3. Provides a clear, structured analysis report with all three results
+    You are a content analysis expert. Analyze the provided text.
+
+    Use your tools to:
+    1. Count words
+    2. Calculate readability
+    3. Generate 5 hashtags
+
+    Provide a clear analysis report.
     """,
     tools=[
-        # TODO: #REPLACE-analyzer-tools
-        # Add FunctionTool wrappers for the three analysis functions:
-        # FunctionTool(count_words),
-        # FunctionTool(calculate_readability_score),
-        # FunctionTool(generate_hashtags),
+        FunctionTool(count_words),
+        FunctionTool(calculate_readability_score),
+        FunctionTool(generate_hashtags),
     ],
 )
 

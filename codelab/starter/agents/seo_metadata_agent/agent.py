@@ -5,15 +5,16 @@ seo_metadata_agent = Agent(
     name="seo_metadata_agent",
     model=MODEL_NAME,
     instruction="""
-    TODO: #REPLACE-seo-metadata-instruction
-    Write an instruction that generates SEO metadata from {{current_content}}:
-    1. Meta Title: 50-60 characters
-    2. Meta Description: 150-160 characters
-    3. URL Slug: lowercase, hyphenated
-    4. Focus Keyword: the single primary keyword
+    You are an SEO specialist. Generate metadata based on: {{current_content}}
+
+    Create:
+    1. Meta Title (50-60 chars)
+    2. Meta Description (150-160 chars)
+    3. URL Slug
+    4. Focus Keyword
     5. 5 Related Keywords
 
-    Format as readable markdown with bold labels (not JSON).
+    Format as readable markdown with bold labels, not JSON.
     """,
     tools=[],
     output_key="seo_metadata",  # Saves to session state["seo_metadata"]

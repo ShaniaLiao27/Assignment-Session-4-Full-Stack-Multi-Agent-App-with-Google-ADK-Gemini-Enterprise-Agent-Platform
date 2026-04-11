@@ -36,7 +36,7 @@
           <hr style="border:none;border-top:1px solid #dadce0;margin:0 0 20px 0;">
           <div style="display:flex;align-items:center;margin-bottom:16px;color:#5f6368;font-size:14px;">
             <svg style="margin-right:16px;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-            <span>Last updated Apr 10, 2026</span>
+            <span>Last updated Apr 11, 2026</span>
           </div>
           <div style="display:flex;align-items:center;color:#5f6368;font-size:14px;">
             <div style="margin-right:16px;flex-shrink:0;width:20px;height:20px;border-radius:50%;background:#bdc1c6;display:flex;align-items:center;justify-content:center;overflow:hidden;">
@@ -127,7 +127,7 @@
         <h2 is-upgraded>Google Cloud Credits</h2>
 <aside class="special"><p>If you are attending an <strong>instructor-led workshop</strong>: Your instructor will provide you with a credit code. Please use the one they provide.</p>
 <p>If you are working through this Codelab <strong>on your own</strong>: You must use a personal account (e.g., <code>name@gmail.com</code>). Corporate or school-managed accounts will not work.</p>
-<p>Redeem your free Google Cloud credits using this <a href="https://trygcp.dev/claim/deveco-gdg-042662c1d79" target="_blank">link</a>. You can follow the instructions <a href="https://codelabs.developers.google.com/codelabs/cloud-codelab-credits" target="_blank">here</a> to activate the credit and create a new project.</p>
+<p>Redeem your free Google Cloud credits using this <a href="https://trygcp.dev/claim/deveco-gdg-79ee59aff75" target="_blank">link</a>. You can follow the instructions <a href="https://codelabs.developers.google.com/codelabs/cloud-codelab-credits" target="_blank">here</a> to activate the credit and create a new project.</p>
 </aside>
 <h2 is-upgraded>What is Cloud Shell?</h2>
 <p>Cloud Shell is a free browser-based Linux environment with everything pre-installed: <code>gcloud</code>, <code>git</code>, Python, Docker, and more. You don&#39;t need to install anything locally.</p>
@@ -465,27 +465,6 @@ print(calculate_readability_score(&#39;The cat sat on the mat. It was a good day
 <pre><code language="language-text" class="language-text">6
 {&#39;score&#39;: 116.15, &#39;grade&#39;: &#39;Very Easy&#39;, &#39;meets_threshold&#39;: True}
 </code></pre>
-<h2 is-upgraded>Wire the tools into the agent</h2>
-<p>Now that all three tools are complete, open the agent file and fill in the instruction and tool list:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/content_analyzer_agent/agent.py
-</code></pre>
-<p>Replace the two TODO blocks with:</p>
-<pre><code language="language-python" class="language-python">    instruction=&#34;&#34;&#34;
-    You are a content analysis expert. Analyze the provided text.
-
-    Use your tools to:
-    1. Count words
-    2. Calculate readability
-    3. Generate 5 hashtags
-
-    Provide a clear analysis report.
-    &#34;&#34;&#34;,
-    tools=[
-        FunctionTool(count_words),
-        FunctionTool(calculate_readability_score),
-        FunctionTool(generate_hashtags),
-    ],
-</code></pre>
 <h2 is-upgraded>See the agent use the tools</h2>
 <p>The unit test above calls the functions directly. Now run the actual agent so you can see the LLM decide <em>when</em> to call each tool and what to do with the results.</p>
 <p>Start the ADK web interface:</p>
@@ -703,28 +682,18 @@ coordinator/orchestrator
       </google-codelab-step>
     
       <google-codelab-step label="Sequential Workflow: Research and Draft" duration="0">
-        <h2 is-upgraded>SequentialAgent</h2>
+        <aside class="special"><p><strong>What you will build:</strong> A <code>SequentialAgent</code> that chains <code>topic_research_agent</code> and <code>content_drafter_agent</code> in order. Each step completes before the next starts, and output flows through session state.</p>
+</aside>
+<h2 is-upgraded>SequentialAgent</h2>
 <p>A <code>SequentialAgent</code> runs its <code>sub_agents</code> list in strict left-to-right order. Each agent completes before the next one starts. This is perfect for pipelines where step 2 depends on the output of step 1.</p>
 <pre><code language="language-text" class="language-text">SequentialAgent
     → runs topic_research_agent  (writes blog_topic to state)
     → then runs content_drafter_agent  (reads blog_topic from state)
 </code></pre>
 <p class="image-container"><img alt="SequentialAgent — research_and_draft_workflow runs sub-agents one after another" src="img/e0f7d9f2fa987c0e.png"></p>
-<h2 is-upgraded>Fill in the content drafter</h2>
-<p>Before wiring up the workflow, open the <code>content_drafter_agent</code> file:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/content_drafter_agent/agent.py
-</code></pre>
-<p>Replace the <code>TODO: #REPLACE-content-drafter-instruction</code> placeholder with:</p>
-<pre><code language="language-python" class="language-python">    You are a content writer. Write a blog post: &#123;&#123;blog_topic}}
-
-    Create a draft (400-600 words) with:
-    - Engaging introduction
-    - At least 2 H2 headings
-    - A conclusion section
-
-    Output only the blog post in markdown format.
-</code></pre>
-<aside class="special"><p>The <code>&#123;&#123;blog_topic}}</code> syntax is ADK&#39;s key templating - before calling the model, ADK substitutes it with the value of <code>session.state["blog_topic"]</code> written by <code>topic_research_agent</code>. You&#39;ll learn more about this in the <strong>Session State</strong> section.</p>
+<h2 is-upgraded>The content drafter</h2>
+<p><code>content_drafter_agent</code> reads <code>&#123;&#123;blog_topic}}</code> from session state (written by <code>topic_research_agent</code>) and writes a 400-600 word draft blog post in markdown to <code>current_content</code>. Its instruction is already pre-filled in the starter code.</p>
+<aside class="special"><p>The <code>&#123;&#123;blog_topic}}</code> syntax is ADK&#39;s key templating — before calling the model, ADK substitutes it with the value of <code>session.state["blog_topic"]</code> written by <code>topic_research_agent</code>. You&#39;ll learn more about this in the <strong>Session State</strong> section.</p>
 </aside>
 <h2 is-upgraded>Fill in the first workflow</h2>
 <p>Open the <code>orchestrator_agent</code> file:</p>
@@ -739,6 +708,8 @@ coordinator/orchestrator
 <p>At the bottom of <code>agents/orchestrator_agent/agent.py</code>, set:</p>
 <pre><code language="language-python" class="language-python">root_agent = research_and_draft_workflow
 </code></pre>
+<aside class="special"><p><strong>Why is the workflow assembly in </strong><strong><code>orchestrator_agent/agent.py</code></strong><strong>?</strong> Each specialist agent (<code>topic_research_agent</code>, <code>content_drafter_agent</code>, etc.) lives in its own package and does one thing well. It has no knowledge of the pipeline it belongs to. The <code>orchestrator_agent</code> is the single place that composes those specialists into workflows and owns the execution graph. This separation means you can test any specialist in isolation with <code>adk web</code>, swap one out, or reuse it in a different pipeline, without touching the others.</p>
+</aside>
 <h2 is-upgraded>Test the sequential workflow</h2>
 <pre><code language="language-bash" class="language-bash">PYTHONPATH=. adk web agents --port 8080
 </code></pre>
@@ -786,7 +757,9 @@ content_drafter_agent
       </google-codelab-step>
     
       <google-codelab-step label="The Quality Loop: Checker, Improver, and LoopAgent" duration="0">
-        <p>A draft is a starting point, not a finished product. In this step you&#39;ll add an automatic quality review cycle.</p>
+        <aside class="special"><p><strong>What you will build:</strong> A <code>LoopAgent</code> that iterates between a quality checker and a content improver until the content passes a score threshold or reaches the maximum number of iterations. You will see how <code>exit_loop</code> lets an agent signal the loop to stop early.</p>
+</aside>
+<p>A draft is a starting point, not a finished product. In this step you&#39;ll add an automatic quality review cycle.</p>
 <h2 is-upgraded>LoopAgent</h2>
 <p>A <code>LoopAgent</code> runs its <code>sub_agents</code> list in order, then repeats from the beginning. It stops when either:</p>
 <ol type="1">
@@ -802,47 +775,14 @@ content_drafter_agent
         → content_improver_agent (sees &#34;QUALITY_THRESHOLD_MET&#34;, calls exit_loop → STOP)
 </code></pre>
 <p class="image-container"><img alt="LoopAgent — quality_improvement_loop repeats until quality passes or max_iterations reached" src="img/58cc4c7d71da1583.png"></p>
-<h2 is-upgraded>Fill in the quality checker</h2>
-<p>Open the <code>quality_checker_agent</code> file:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/quality_checker_agent/agent.py
-</code></pre>
-<p>Replace the <code>TODO: #REPLACE-quality-checker-instruction</code> placeholder with:</p>
-<pre><code language="language-python" class="language-python">    You are a content quality analyst. Analyze: &#123;&#123;current_content}}
-
-    Your job:
-    1. Count approximate word count
-    2. Estimate readability score (60+ is good)
-    3. Check for clear headings
-    4. Check for conclusion section
-
-    Use `calculate_content_quality_score` tool.
-
-    Then:
-    - IF overall_score &gt;= 70, respond with: &#39;{QUALITY_THRESHOLD_MET}&#39;
-    - ELSE, respond with: &#39;Quality score: [score]. Issues: [specific problems]&#39;
-</code></pre>
-<aside class="special"><p><strong>Note on double braces:</strong> The instruction is an f-string, so write <code>&#123;&#123;current_content}}</code> - Python converts double braces to single braces, giving ADK the <code>{current_content}</code> it needs for state substitution.</p>
+<h2 is-upgraded>The quality checker and content improver</h2>
+<p>Both agents are pre-filled in the starter code:</p>
+<ul>
+<li><strong><code>quality_checker_agent</code></strong> — reads <code>&#123;&#123;current_content}}</code>, calls <code>calculate_content_quality_score</code> with estimated word count, readability, headings, and conclusion presence. If <code>overall_score >= 70</code> it responds with <code>QUALITY_THRESHOLD_MET</code>; otherwise it lists specific issues.</li>
+<li><strong><code>content_improver_agent</code></strong> — reads <code>&#123;&#123;current_content}}</code> and <code>&#123;&#123;quality_feedback}}</code>. If feedback is <code>QUALITY_THRESHOLD_MET</code> it calls <code>exit_loop</code> to stop the loop early. Otherwise it rewrites the content to fix the reported issues and saves the improved version back to <code>current_content</code>.</li>
+</ul>
+<aside class="special"><p><strong>Note on double braces:</strong> Both instructions are f-strings, so <code>&#123;&#123;current_content}}</code> in Python source becomes <code>{current_content}</code> at runtime — the form ADK needs for session state substitution.</p>
 </aside>
-<h2 is-upgraded>Fill in the content improver</h2>
-<p>Open the <code>content_improver_agent</code> file:</p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/content_improver_agent/agent.py
-</code></pre>
-<p>Replace the <code>TODO: #REPLACE-content-improver-instruction</code> placeholder with:</p>
-<pre><code language="language-python" class="language-python">    Current content: &#123;&#123;current_content}}
-    Feedback: &#123;&#123;quality_feedback}}
-
-    - IF feedback is &#39;{QUALITY_THRESHOLD_MET}&#39;:
-      1. Call the `exit_loop` tool to terminate the loop
-      2. Then respond with: &#34;Quality threshold met! Content approved.&#34;
-
-    - ELSE: improve based on issues:
-      * Expand if short (add examples, details, explanations)
-      * Simplify if complex (shorter sentences, simpler words)
-      * Add clear H2 headings if missing
-      * Add a strong conclusion if missing
-
-      Output the COMPLETE improved content in markdown.
-</code></pre>
 <h2 is-upgraded>Fill in the LoopAgent</h2>
 <pre><code language="language-python" class="language-python"># agents/orchestrator_agent/agent.py
 
@@ -879,7 +819,9 @@ quality_improvement_loop = LoopAgent(
       </google-codelab-step>
     
       <google-codelab-step label="Parallel Content Creation" duration="0">
-        <p>The draft has been researched, written, and quality-checked. Now generate four content formats simultaneously.</p>
+        <aside class="special"><p><strong>What you will build:</strong> A <code>ParallelAgent</code> that fans out to four specialist agents at the same time. All four run concurrently instead of sequentially, reducing total latency from ~40 seconds to ~10 seconds.</p>
+</aside>
+<p>The draft has been researched, written, and quality-checked. Now generate four content formats simultaneously.</p>
 <h2 is-upgraded>ParallelAgent</h2>
 <p>A <code>ParallelAgent</code> runs all its <code>sub_agents</code> at the same time. Each agent independently reads the same session state snapshot. This is the &#34;fan-out&#34; pattern: one input, multiple concurrent outputs.</p>
 <pre><code language="language-text" class="language-text">ParallelAgent
@@ -907,63 +849,30 @@ quality_improvement_loop = LoopAgent(
 <p>All four agents run concurrently, so the total time equals the slowest single agent - not the sum of all four. That&#39;s a <strong>4× latency reduction</strong> for this pipeline.</p>
 <aside class="warning"><p><strong>Important:</strong> Each parallel agent must write to a <strong>unique </strong><code>output_key</code>. If two agents share a key, one will overwrite the other&#39;s output.</p>
 </aside>
-<h2 is-upgraded>Fill in all four content agents</h2>
-<p>For each agent below, open the file and replace only the <code>TODO</code> instruction placeholder.</p>
-<p><strong>Blog Post Writer:</strong></p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/blog_post_writer_agent/agent.py
-</code></pre>
-<p>Replace <code>TODO: #REPLACE-blog-post-writer-instruction</code> with:</p>
-<pre><code language="language-python" class="language-python">    You are a professional blog writer. Create the final polished blog post from: &#123;&#123;current_content}}
-
-    Enhance it to be publication-ready:
-    - Ensure 800-1200 words
-    - Add engaging subheadings
-    - Include actionable tips
-    - Strong call-to-action
-
-    Output only the final blog post in markdown.
-</code></pre>
-<p><strong>Social Media Creator:</strong></p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/social_media_creator_agent/agent.py
-</code></pre>
-<p>Replace <code>TODO: #REPLACE-social-media-creator-instruction</code> with:</p>
-<pre><code language="language-python" class="language-python">    You are a social media specialist. Create posts from: &#123;&#123;current_content}}
-
-    Create:
-    1. LinkedIn Post (150-200 words, professional)
-    2. Twitter Thread (3 tweets, 280 chars each)
-    3. Instagram Caption (100-150 words, with emojis and hashtags)
-
-    Format with clear headers for each platform.
-</code></pre>
-<p><strong>Email Newsletter Writer:</strong></p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/email_newsletter_writer_agent/agent.py
-</code></pre>
-<p>Replace <code>TODO: #REPLACE-email-newsletter-instruction</code> with:</p>
-<pre><code language="language-python" class="language-python">    You are an email marketing specialist. Create a newsletter from: &#123;&#123;current_content}}
-
-    Include:
-    - Subject Line (compelling, 50-60 chars)
-    - Preview Text (40-50 chars)
-    - Body (300-400 words with CTA)
-
-    Format with clear sections.
-</code></pre>
-<p><strong>SEO Metadata Agent:</strong></p>
-<pre><code language="language-bash" class="language-bash">cloudshell edit agents/seo_metadata_agent/agent.py
-</code></pre>
-<p>Replace <code>TODO: #REPLACE-seo-metadata-instruction</code> with:</p>
-<pre><code language="language-python" class="language-python">    You are an SEO specialist. Generate metadata based on: &#123;&#123;current_content}}
-
-    Create:
-    1. Meta Title (50-60 chars)
-    2. Meta Description (150-160 chars)
-    3. URL Slug
-    4. Focus Keyword
-    5. 5 Related Keywords
-
-    Format as readable markdown with bold labels, not JSON.
-</code></pre>
+<h2 is-upgraded>The four parallel agents</h2>
+<p>All four agents are pre-filled in the starter code. Each reads <code>&#123;&#123;current_content}}</code> from session state and writes to its own unique <code>output_key</code>:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>Agent</p>
+</td><td colspan="1" rowspan="1"><p>output_key</p>
+</td><td colspan="1" rowspan="1"><p>What it produces</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>blog_post_writer_agent</code></p>
+</td><td colspan="1" rowspan="1"><p><code>final_blog_post</code></p>
+</td><td colspan="1" rowspan="1"><p>Publication-ready blog post, 800-1200 words</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>social_media_creator_agent</code></p>
+</td><td colspan="1" rowspan="1"><p><code>social_media_posts</code></p>
+</td><td colspan="1" rowspan="1"><p>LinkedIn post, Twitter thread, Instagram caption</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>email_newsletter_writer_agent</code></p>
+</td><td colspan="1" rowspan="1"><p><code>email_newsletter</code></p>
+</td><td colspan="1" rowspan="1"><p>Subject line, preview text, 300-400 word body with CTA</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><code>seo_metadata_agent</code></p>
+</td><td colspan="1" rowspan="1"><p><code>seo_metadata</code></p>
+</td><td colspan="1" rowspan="1"><p>Meta title, description, URL slug, focus keyword, 5 related keywords</p>
+</td></tr>
+</table>
 <h2 is-upgraded>Fill in the ParallelAgent</h2>
 <pre><code language="language-python" class="language-python"># agents/orchestrator_agent/agent.py
 
@@ -1001,7 +910,9 @@ seo_metadata       → &#34;**Meta Title:** ...&#34;
       </google-codelab-step>
     
       <google-codelab-step label="Assemble the Full Pipeline" duration="0">
-        <p>Now compose all three phases into the complete content workflow.</p>
+        <aside class="special"><p><strong>What you will build:</strong> A single <code>SequentialAgent</code> that composes all three patterns together: Sequential research and draft, then Loop quality improvement, then Parallel multi-channel generation. This is the complete three-phase content pipeline.</p>
+</aside>
+<p>Now compose all three phases into the complete content workflow.</p>
 <h2 is-upgraded>Fill in the full workflow</h2>
 <p>Replace the temporary <code>root_agent</code> at the bottom of <code>agents/orchestrator_agent/agent.py</code> with the complete pipeline:</p>
 <pre><code language="language-python" class="language-python"># agents/orchestrator_agent/agent.py
@@ -1043,7 +954,9 @@ print([a.name for a in full_content_workflow.sub_agents])
       </google-codelab-step>
     
       <google-codelab-step label="The Master Orchestrator" duration="0">
-        <p>You now have a complete three-phase content pipeline. But users don&#39;t always want to create content - sometimes they want to analyze existing text. Rather than exposing two separate entry points, you&#39;ll wrap everything behind a single orchestrator that reads the user&#39;s intent and routes accordingly.</p>
+        <aside class="special"><p><strong>What you will build:</strong> An LLM-driven <code>Agent</code> that sits at the boundary and reads user intent. It routes content creation requests to <code>full_content_workflow</code> and text analysis requests to <code>content_analyzer_agent</code>, without the user needing to choose explicitly.</p>
+</aside>
+<p>You now have a complete three-phase content pipeline. But users don&#39;t always want to create content - sometimes they want to analyze existing text. Rather than exposing two separate entry points, you&#39;ll wrap everything behind a single orchestrator that reads the user&#39;s intent and routes accordingly.</p>
 <p>This is the <strong>Coordinator</strong> pattern from the architecture framework: one LLM-Driven agent at the boundary, two Workflow-Driven agents behind it. The orchestrator decides; the specialists execute.</p>
 <p class="image-container"><img alt="Full multi-agent system — master orchestrator routing to full_content_workflow and content_analyzer_agent" src="img/9ad048e29ea815b0.png"></p>
 <h2 is-upgraded>Content Analyzer Agent</h2>

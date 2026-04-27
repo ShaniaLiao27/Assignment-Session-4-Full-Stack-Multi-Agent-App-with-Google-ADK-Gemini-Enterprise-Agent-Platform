@@ -226,7 +226,7 @@ GOOGLE_GENAI_USE_VERTEXAI=1
 <p>Save the file (<code>Ctrl+S</code> in the editor), then return to the terminal.</p>
 <h2 is-upgraded>Verify your setup</h2>
 <p>Run:</p>
-<pre><code language="language-bash" class="language-bash">python -c &#34;from google.adk.agents import Agent; print(&#39;ADK ready ✓&#39;)&#34;
+<pre><code language="language-bash" class="language-bash">uv run python -c &#34;from google.adk.agents import Agent; print(&#39;ADK ready ✓&#39;)&#34;
 </code></pre>
 <p>👀 <strong>Verify</strong> - you should see:</p>
 <pre><code language="language-text" class="language-text">ADK ready ✓
@@ -333,6 +333,8 @@ Your code / adk web UI    ← reads events, displays the result
 <pre><code language="language-python" class="language-python"># topic_research_agent/agent.py
 from google.adk.agents import Agent
 from google.adk.tools import google_search
+from common.callbacks import inject_current_date
+from common.retry import GENERATE_CONTENT_CONFIG
 
 MODEL_NAME = &#34;gemini-2.5-flash&#34;
 
@@ -340,6 +342,8 @@ topic_research_agent = Agent(
     name=&#34;topic_research_agent&#34;,
     model=MODEL_NAME,
     instruction=&#34;&#34;&#34;
+    Today&#39;s date is {current_date}. Anchor &#34;trending&#34;, &#34;recent&#34;, and &#34;this year&#34; to this date.
+
     You are a topic research expert. Based on the user&#39;s request,
     use search to find trending angles and select the SINGLE BEST specific blog post title.
     Output format: Just the title, nothing else.
@@ -347,8 +351,12 @@ topic_research_agent = Agent(
     Example: &#34;10 AI Tools That Save Small Businesses 20 Hours Per Week&#34;
     &#34;&#34;&#34;,
     tools=[google_search],
-    output_key=&#34;blog_topic&#34;,
+    before_agent_callback=inject_current_date,
+    generate_content_config=GENERATE_CONTENT_CONFIG,
+    output_key=&#34;blog_topic&#34;,  # Saves the agent&#39;s final response to session state[&#34;blog_topic&#34;]
 )
+
+root_agent = topic_research_agent
 </code></pre>
 <aside class="special"><p><strong>Why </strong><strong><code>MODEL_NAME = "gemini-2.5-flash"</code></strong><strong> is defined inline:</strong> Each agent declares its own <code>MODEL_NAME</code> constant rather than importing from a shared file. This keeps every agent self-contained — <code>adk web</code> can load any single agent in isolation without needing other modules on the path. Passing it as a plain string (not a pre-configured <code>Gemini</code> object) lets ADK construct the model at runtime using Vertex AI credentials on Agent Runtime and your local API key during development.</p>
 </aside>
@@ -358,8 +366,6 @@ topic_research_agent = Agent(
 <p>Start it from the <code>starter/</code> directory:</p>
 <pre><code language="language-bash" class="language-bash">uv run adk web agents --port 8080
 </code></pre>
-<aside class="special"><p><strong>Why </strong><strong><code>uv run</code></strong><strong>? </strong><code>uv sync</code> installed the local <code>agents</code>, <code>common</code>, and <code>backend</code> packages in editable mode (declared in <code>pyproject.toml</code>), so <code>from agents.topic_research_agent.agent import ...</code> and <code>from common.callbacks import ...</code> resolve everywhere. <code>uv run</code> invokes <code>adk web</code> inside that virtual environment without needing to manually <code>source .venv/bin/activate</code>. If you skip <code>uv run</code>, you&#39;ll likely get <code>ModuleNotFoundError: No module named 'agents'</code>.</p>
-</aside>
 <p>Then open it in your browser via <strong>Web Preview</strong>:</p>
 <ol type="1">
 <li>Click the <strong>Web Preview</strong> button (top-right of the Cloud Shell toolbar)</li>
@@ -381,7 +387,7 @@ topic_research_agent = Agent(
 
       </google-codelab-step>
     
-      <google-codelab-step label="Building Custom Tools" duration="0">
+      <google-codelab-step label="Agent with custom tools" duration="0">
         <p>Each agent that uses custom tools has its own <code>tools.py</code> inside its package. Open them in Cloud Shell Editor:</p>
 <pre><code language="language-bash" class="language-bash">cloudshell edit agents/content_analyzer_agent/tools.py
 cloudshell edit agents/quality_checker_agent/tools.py
@@ -492,197 +498,6 @@ Hashtags: #machinelearning #artificialintelligence #tools #developers #businesse
 
       </google-codelab-step>
     
-      <google-codelab-step label="Agent Teams: sub_agents vs AgentTool" duration="0">
-        <p>You&#39;ve seen how a single agent uses tools to get things done. But in a multi-agent system, agents also need to delegate work to <em>other agents</em>. ADK gives you two patterns for this - and choosing the wrong one has real consequences for how data flows, how events are visible, and how much control the parent agent has.</p>
-<h2 is-upgraded>Pattern 1: AgentTool (agent as a callable tool)</h2>
-<p><code>AgentTool</code> wraps an entire agent as a tool that a parent agent can call. The parent LLM decides <em>when</em> to call it and what to pass as input, just like any other tool.</p>
-<pre><code language="language-python" class="language-python">from google.adk.tools import agent_tool
-
-specialist_a_tool = agent_tool.AgentTool(agent=specialist_a)
-specialist_b_tool = agent_tool.AgentTool(agent=specialist_b)
-
-coordinator = Agent(
-    name=&#34;coordinator&#34;,
-    model=MODEL_NAME,
-    instruction=&#34;&#34;&#34;
-    You are a coordinator. Use your tools to:
-    - Delegate task A with the specialist_a tool
-    - Delegate task B with the specialist_b tool
-    &#34;&#34;&#34;,
-    tools=[specialist_a_tool, specialist_b_tool],
-)
-</code></pre>
-<p><strong>What happens internally:</strong> The parent agent makes an LLM call, the model emits a tool-call for <code>topic_research_agent</code>, ADK invokes that agent, and the result comes back as a tool response in the parent&#39;s conversation. The inner agent&#39;s events are <strong>not</strong> propagated to the outer runner.</p>
-<h2 is-upgraded>Pattern 2: sub_agents (hierarchical delegation)</h2>
-<p><code>sub_agents</code> declares a parent-child relationship. The parent LLM can <em>transfer control</em> to a sub-agent. The sub-agent runs in the same session, reads the same state, and its events <strong>propagate</strong> to the outer runner.</p>
-<pre><code language="language-python" class="language-python">orchestrator = Agent(
-    name=&#34;orchestrator&#34;,
-    model=MODEL_NAME,
-    instruction=&#34;Route content creation to full_content_workflow, analysis to content_analyzer_agent.&#34;,
-    sub_agents=[full_content_workflow, content_analyzer_agent],
-)
-</code></pre>
-<h2 is-upgraded>Choosing between the two</h2>
-<table>
-<tr><td colspan="1" rowspan="1"></td><td colspan="1" rowspan="1"><p>AgentTool</p>
-</td><td colspan="1" rowspan="1"><p>sub_agents</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Nature</strong></p>
-</td><td colspan="1" rowspan="1"><p>Discrete, stateless - like a function call</p>
-</td><td colspan="1" rowspan="1"><p>Stateful, context-dependent - full control transfer</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Execution context</strong></p>
-</td><td colspan="1" rowspan="1"><p>Runs in an isolated Runner with its own session</p>
-</td><td colspan="1" rowspan="1"><p>Runs in the same invocation context as the parent</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Inner events visible externally?</strong></p>
-</td><td colspan="1" rowspan="1"><p>No - black box, caller only sees final text</p>
-</td><td colspan="1" rowspan="1"><p>Yes - all inner events propagate to the outer runner</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Session state shared?</strong></p>
-</td><td colspan="1" rowspan="1"><p>No - only <code>state_delta</code> forwarded back to parent</p>
-</td><td colspan="1" rowspan="1"><p>Yes - full shared state through invocation context</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Control flow</strong></p>
-</td><td colspan="1" rowspan="1"><p>LLM decides per turn (function-call style)</p>
-</td><td colspan="1" rowspan="1"><p>LLM transfers control; workflow agents use deterministic order</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Best for</strong></p>
-</td><td colspan="1" rowspan="1"><p>Discrete, stateless subtasks</p>
-</td><td colspan="1" rowspan="1"><p>Stateful pipelines, streaming, SSE backends</p>
-</td></tr>
-</table>
-<p><strong>Why this codelab uses sub_agents:</strong> The FastAPI backend in the <strong>Full-Stack Cloud Run Deployment</strong> section uses Server-Sent Events (SSE) to stream content to the React frontend in real time. It does this by reading events from the runner - specifically, it checks the <code>author</code> field of each event to know which agent produced it. This only works with <code>sub_agents</code> because inner agent events propagate. With <code>AgentTool</code>, inner events are hidden and the backend would receive nothing to stream.</p>
-<h2 is-upgraded>A practical example: the orchestrator pattern</h2>
-<p>Both patterns support the same high-level idea - a coordinator that delegates to specialists:</p>
-<pre><code language="language-text" class="language-text">User request
-    ↓
-coordinator/orchestrator
-    ├── delegates to → specialist_A
-    └── delegates to → specialist_B
-</code></pre>
-<p>The difference is whether that delegation is a <em>tool call</em> (AgentTool) or a <em>control transfer</em> (sub_agents). For the Content Creation Studio, control transfer via <code>sub_agents</code> is the right choice because we need event visibility for real-time streaming.</p>
-
-
-      </google-codelab-step>
-    
-      <google-codelab-step label="Choosing the Right Architecture" duration="0">
-        <p>Before writing any agent code, the most important question is: <strong>what pattern fits your problem?</strong> Using the wrong architecture leads to brittle systems, unnecessary cost, and agents that fight each other instead of collaborating.</p>
-<h2 is-upgraded>Pattern categories</h2>
-<p>Google Cloud groups agentic patterns into four categories based on your workload&#39;s characteristics:</p>
-<p><strong>Deterministic workflows</strong> - the execution order is fixed in code, not decided by a model:</p>
-<table>
-<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
-</td><td colspan="1" rowspan="1"><p>Pattern</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Multi-step pipeline where each step depends on the previous</p>
-</td><td colspan="1" rowspan="1"><p><strong>Sequential</strong></p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Independent sub-tasks that can run at the same time</p>
-</td><td colspan="1" rowspan="1"><p><strong>Parallel</strong></p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Complex generation requiring progressive quality improvement</p>
-</td><td colspan="1" rowspan="1"><p><strong>Iterative Refinement</strong></p>
-</td></tr>
-</table>
-<p><strong>Dynamic orchestration</strong> - a model decides routing and delegation at runtime:</p>
-<table>
-<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
-</td><td colspan="1" rowspan="1"><p>Pattern</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Varied inputs needing adaptive routing to specialized agents</p>
-</td><td colspan="1" rowspan="1"><p><strong>Coordinator</strong></p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Complex, ambiguous tasks requiring multi-level decomposition</p>
-</td><td colspan="1" rowspan="1"><p><strong>Hierarchical Task Decomposition</strong></p>
-</td></tr>
-</table>
-<p><strong>Iterative workflows</strong> - repeat execution until a condition is met:</p>
-<table>
-<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
-</td><td colspan="1" rowspan="1"><p>Pattern</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Automated repetition with a predefined termination condition</p>
-</td><td colspan="1" rowspan="1"><p><strong>Loop</strong></p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Output requires distinct validation before completion</p>
-</td><td colspan="1" rowspan="1"><p><strong>Review and Critique</strong></p>
-</td></tr>
-</table>
-<p><strong>Special requirements:</strong></p>
-<table>
-<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
-</td><td colspan="1" rowspan="1"><p>Pattern</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>High-stakes decisions requiring human judgment or approval</p>
-</td><td colspan="1" rowspan="1"><p><strong>Human-in-the-Loop</strong></p>
-</td></tr>
-</table>
-<aside class="special"><p><strong>Start simple:</strong> A non-agentic solution (a single LLM call) may be more cost-effective for predictable tasks like summarization or classification. Only add agents when the task genuinely requires multi-step reasoning, iteration, or parallelism.</p>
-</aside>
-<h2 is-upgraded>The constraints that drive your choice</h2>
-<p><strong>Cost and latency</strong> Every agent hop is an extra LLM call. A 5-agent pipeline uses at least 5× the tokens of a single agent. Parallel agents reduce latency but increase concurrent cost. If budget is tight: use deterministic patterns, smaller models for simple steps, or replace LLM agents with plain Python functions.</p>
-<p><strong>Determinism vs flexibility</strong> Deterministic patterns (Sequential, Parallel, Loop) are faster and more predictable - the code controls the flow. Dynamic patterns (Coordinator, Hierarchical) are more flexible but add routing overhead and are harder to debug.</p>
-<p><strong>Safety and human oversight</strong> Fully automated pipelines work well for low-stakes tasks like content generation. For financial, medical, or legal decisions, use Human-in-the-Loop - the agent pauses at checkpoints for human review before acting.</p>
-<h2 is-upgraded>How this codelab maps to the framework</h2>
-<table>
-<tr><td colspan="1" rowspan="1"><p>Stage</p>
-</td><td colspan="1" rowspan="1"><p>Pattern</p>
-</td><td colspan="1" rowspan="1"><p>Why</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Research → Draft</p>
-</td><td colspan="1" rowspan="1"><p><strong>Sequential</strong></p>
-</td><td colspan="1" rowspan="1"><p>Draft always depends on research - fixed order, no model routing needed</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Draft → Quality check → Improve</p>
-</td><td colspan="1" rowspan="1"><p><strong>Review and Critique</strong> inside a <strong>Loop</strong></p>
-</td><td colspan="1" rowspan="1"><p>Critic evaluates, generator revises; repeats until quality threshold met</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Blog + Social + Email + SEO</p>
-</td><td colspan="1" rowspan="1"><p><strong>Parallel</strong></p>
-</td><td colspan="1" rowspan="1"><p>All four are independent - run concurrently to reduce latency</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p>Route create vs analyse</p>
-</td><td colspan="1" rowspan="1"><p><strong>Coordinator</strong></p>
-</td><td colspan="1" rowspan="1"><p>User intent is open-ended - model decides which pipeline to invoke</p>
-</td></tr>
-</table>
-<p>Keep this table in mind as you build each piece in the following steps.</p>
-<h2 is-upgraded>LLM-Driven vs Workflow-Driven agents</h2>
-<p>ADK has two fundamentally different agent types, and mixing them up is one of the most common architectural mistakes.</p>
-<table>
-<tr><td colspan="1" rowspan="1"><p>Dimension</p>
-</td><td colspan="1" rowspan="1"><p>LLM-Driven (Agent)</p>
-</td><td colspan="1" rowspan="1"><p>Workflow-Driven (Sequential/Parallel/Loop)</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Routing</strong></p>
-</td><td colspan="1" rowspan="1"><p>LLM decides what to call next</p>
-</td><td colspan="1" rowspan="1"><p>Code defines the execution graph</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Flexibility</strong></p>
-</td><td colspan="1" rowspan="1"><p>Handles ambiguous, open-ended requests</p>
-</td><td colspan="1" rowspan="1"><p>Fixed structure, predictable output</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Cost</strong></p>
-</td><td colspan="1" rowspan="1"><p>Higher (extra LLM call to route)</p>
-</td><td colspan="1" rowspan="1"><p>Lower (no routing LLM call)</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Debuggability</strong></p>
-</td><td colspan="1" rowspan="1"><p>Harder - model behavior varies</p>
-</td><td colspan="1" rowspan="1"><p>Easier - same steps every time</p>
-</td></tr>
-<tr><td colspan="1" rowspan="1"><p><strong>Best for</strong></p>
-</td><td colspan="1" rowspan="1"><p>User-facing intent parsing, open routing</p>
-</td><td colspan="1" rowspan="1"><p>Well-defined pipelines with known steps</p>
-</td></tr>
-</table>
-<aside class="special"><p><strong>The key insight:</strong> Use LLM-Driven agents at the <strong>boundaries</strong> where human intent is ambiguous. Use Workflow-Driven agents <strong>inside</strong> those boundaries where the steps are well-defined.</p>
-</aside>
-<p>In the Content Creation Studio, <code>master_orchestrator_agent</code> is LLM-Driven (it decides whether to create content or analyze it). Once it routes to <code>full_content_workflow</code>, that workflow is entirely Workflow-Driven - Sequential → Loop → Parallel - because the steps are always the same.</p>
-
-
-      </google-codelab-step>
-    
       <google-codelab-step label="Sequential Workflow: Research and Draft" duration="0">
         <aside class="special"><p><strong>What you will build:</strong> A <code>SequentialAgent</code> that chains <code>topic_research_agent</code> and <code>content_drafter_agent</code> in order. Each step completes before the next starts, and output flows through session state.</p>
 </aside>
@@ -695,8 +510,17 @@ coordinator/orchestrator
 <p class="image-container"><img alt="SequentialAgent — research_and_draft_workflow runs sub-agents one after another" src="img/e0f7d9f2fa987c0e.png"></p>
 <h2 is-upgraded>The content drafter</h2>
 <p><code>content_drafter_agent</code> reads <code>{blog_topic}</code> from session state (written by <code>topic_research_agent</code>) and writes a 400-600 word draft blog post in markdown to <code>current_content</code>. Its instruction is already pre-filled in the starter code.</p>
-<aside class="special"><p>The <code>{blog_topic}</code> syntax is ADK&#39;s key templating — before calling the model, ADK substitutes it with the value of <code>session.state["blog_topic"]</code> written by <code>topic_research_agent</code>. You&#39;ll learn more about this in the <strong>Session State</strong> section.</p>
-</aside>
+<h2 is-upgraded>How session state works</h2>
+<p>Every ADK conversation has a <code>Session</code> object with a <code>state</code> dictionary. All agents in the same session share this dictionary - it&#39;s how they pass data to each other.</p>
+<pre><code language="language-text" class="language-text">topic_research_agent
+    writes → session.state[&#34;blog_topic&#34;] = &#34;10 Ways to...&#34;
+                    ↓
+content_drafter_agent
+    reads  → {blog_topic} in instruction resolves to &#34;10 Ways to...&#34;
+    writes → session.state[&#34;current_content&#34;] = &#34;# 10 Ways to...\n\n...&#34;
+</code></pre>
+<p>The <code>{key}</code> syntax in an instruction is ADK&#39;s <strong>key templating</strong> feature. Before calling the model, ADK substitutes <code>{blog_topic}</code> with the current value of <code>session.state["blog_topic"]</code>.</p>
+<p>Use <code>&#123;&#123;key?}}</code> (with a <code>?</code>) for optional keys - this prevents errors if the key doesn&#39;t exist yet.</p>
 <h2 is-upgraded>Fill in the first workflow</h2>
 <p>Open the <code>orchestrator_agent</code> file:</p>
 <pre><code language="language-bash" class="language-bash">cloudshell edit agents/orchestrator_agent/agent.py
@@ -724,36 +548,9 @@ current_content → &#34;# 10 Sustainable Packaging Innovations...\n\n...&#34;
 </code></pre>
 <aside class="special"><p><strong>Tip:</strong> Click any event in the Events panel to inspect the exact request and response sent to the model at that step.</p>
 </aside>
-<aside class="special"><p><strong>Keep </strong><strong><code>root_agent = research_and_draft_workflow</code></strong><strong> for now.</strong> You&#39;ll update it in the next step as you build the quality loop.</p>
-</aside>
 <aside class="special"><p><strong>Pattern in practice: </strong><code>research_and_draft_workflow</code> is a classic <strong>workflow-driven</strong> pipeline - topic research <em>always</em> runs before drafting, with no LLM making that routing decision. This is exactly the &#34;deterministic steps → Sequential&#34; case from the architecture decision framework you reviewed earlier.</p>
 </aside>
 <p>Press <code>Ctrl+C</code> to stop the server.</p>
-
-
-      </google-codelab-step>
-    
-      <google-codelab-step label="Session State: The Content Drafter" duration="0">
-        <p>You&#39;ve just run the sequential workflow and seen two keys appear in the <strong>State</strong> tab: <code>blog_topic</code> and <code>current_content</code>. This step explains the mechanism behind that.</p>
-<h2 is-upgraded>How session state works</h2>
-<p>Every ADK conversation has a <code>Session</code> object with a <code>state</code> dictionary. All agents in the same session share this dictionary - it&#39;s how they pass data to each other.</p>
-<pre><code language="language-text" class="language-text">topic_research_agent
-    writes → session.state[&#34;blog_topic&#34;] = &#34;10 Ways to...&#34;
-                    ↓
-content_drafter_agent
-    reads  → {blog_topic} in instruction resolves to &#34;10 Ways to...&#34;
-    writes → session.state[&#34;current_content&#34;] = &#34;# 10 Ways to...\n\n...&#34;
-</code></pre>
-<p>The <code>{key}</code> syntax in an instruction is ADK&#39;s <strong>key templating</strong> feature. Before calling the model, ADK substitutes <code>{blog_topic}</code> with the current value of <code>session.state["blog_topic"]</code>.</p>
-<p>Use <code>&#123;&#123;key?}}</code> (with a <code>?</code>) for optional keys - this prevents errors if the key doesn&#39;t exist yet.</p>
-<h2 is-upgraded>Verify in the State tab</h2>
-<p>Open <code>content_drafter_agent/agent.py</code> and confirm:</p>
-<ul>
-<li><code>output_key="blog_topic"</code> on <code>topic_research_agent</code> is what wrote the first key</li>
-<li><code>output_key="current_content"</code> on <code>content_drafter_agent</code> is what wrote the second key</li>
-<li>The instruction uses <code>{blog_topic}</code> to read the first agent&#39;s output</li>
-</ul>
-<p>Every subsequent agent in the pipeline uses this same pattern - <code>output_key</code> to write, <code>{key}</code> to read.</p>
 
 
       </google-codelab-step>
@@ -888,25 +685,6 @@ parallel_content_creation = ParallelAgent(
     ],
 )
 </code></pre>
-<h2 is-upgraded>Test</h2>
-<p>The parallel agents read <code>{current_content}</code> from session state - they can&#39;t run standalone. Update <code>root_agent</code> in <code>agents/orchestrator_agent/agent.py</code> to wire all three phases together:</p>
-<pre><code language="language-python" class="language-python">root_agent = SequentialAgent(
-    name=&#34;three_phase_pipeline&#34;,
-    sub_agents=[research_and_draft_workflow, quality_improvement_loop, parallel_content_creation],
-)
-</code></pre>
-<p>Run <code>uv run adk web agents --port 8080</code>, select <code>orchestrator_agent</code> from the dropdown, and enter the prompt:</p>
-<pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
-</code></pre>
-<p>All four keys should appear in the State tab simultaneously after the research → draft → quality loop completes:</p>
-<pre><code language="language-text" class="language-text">final_blog_post    → &#34;# 10 Sustainable Packaging Innovations...&#34;
-social_media_posts → &#34;**LinkedIn Post**\n...&#34;
-email_newsletter   → &#34;**Subject Line:** ...&#34;
-seo_metadata       → &#34;**Meta Title:** ...&#34;
-</code></pre>
-<aside class="special"><p><strong>Next step:</strong> You&#39;ll replace this with <code>full_content_workflow</code> in the next section - no need to revert.</p>
-</aside>
-<p>Press <code>Ctrl+C</code> to stop the server.</p>
 
 
       </google-codelab-step>
@@ -931,46 +709,61 @@ full_content_workflow = SequentialAgent(
 root_agent = full_content_workflow
 </code></pre>
 <p>This is a <code>SequentialAgent</code> wrapping other <code>SequentialAgent</code>, <code>LoopAgent</code>, and <code>ParallelAgent</code> instances. ADK treats all agent types uniformly as <code>sub_agents</code>, so nesting works at any depth.</p>
-<p>The complete pipeline:</p>
+<h2 is-upgraded>Test the complete pipeline</h2>
+<p>Run <code>uv run adk web agents --port 8080</code>, select <code>orchestrator_agent</code> from the dropdown, and enter the prompt:</p>
+<pre><code language="language-text" class="language-text">Write a blog about sustainable packaging for eco-conscious millennials
+</code></pre>
+<p>All four keys should appear in the State tab simultaneously after the research → draft → quality loop completes:</p>
+<pre><code language="language-text" class="language-text">final_blog_post    → &#34;# 10 Sustainable Packaging Innovations...&#34;
+social_media_posts → &#34;**LinkedIn Post**\n...&#34;
+email_newsletter   → &#34;**Subject Line:** ...&#34;
+seo_metadata       → &#34;**Meta Title:** ...&#34;
+</code></pre>
+<aside class="special"><p><strong>Debugging Tip: Manual State Injection</strong> You can test the <code>parallel_content_creation</code> phase in isolation without running the full pipeline. Select <code>parallel_content_creation</code> from the dropdown, go to the <strong>State</strong> tab, and manually add a <code>current_content</code> key with some markdown text. Then send any message (like &#34;go&#34;) to trigger the agents. They will read your manual state and generate the outputs immediately!</p>
+</aside>
+<p>The complete hierarchy you just built:</p>
 <pre><code language="language-text" class="language-text">full_content_workflow (SequentialAgent)
-  ↓ step 1
-  research_and_draft_workflow (SequentialAgent)
-    ↓ topic_research_agent → content_drafter_agent
-  ↓ step 2
-  quality_improvement_loop (LoopAgent)
-    ↓ [quality_checker_agent → content_improver_agent] × ≤2
-  ↓ step 3
-  parallel_content_creation (ParallelAgent)
-    ↓ [blog + social + email + seo] all at once
+├── 1. research_and_draft_workflow (SequentialAgent)
+│      ├── topic_research_agent
+│      └── content_drafter_agent
+├── 2. quality_improvement_loop (LoopAgent)
+│      └── [quality_checker_agent + content_improver_agent]
+└── 3. parallel_content_creation (ParallelAgent)
+       ├── blog_post_writer_agent
+       ├── social_media_creator_agent
+       ├── email_newsletter_writer_agent
+       └── seo_metadata_agent
 </code></pre>
 <h2 is-upgraded>Verify the structure</h2>
+<p>Run this command to verify that the pipeline is correctly nested and that ADK recognizes the types of your sub-agents:</p>
 <pre><code language="language-bash" class="language-bash">python -c &#34;
 import sys; sys.path.insert(0, &#39;agents&#39;)
 from orchestrator_agent.agent import full_content_workflow
-print([a.name for a in full_content_workflow.sub_agents])
+print([(a.name, type(a).__name__) for a in full_content_workflow.sub_agents])
 &#34;
 </code></pre>
-<p>Should print: <code>['research_and_draft_workflow', 'quality_improvement_loop', 'parallel_content_creation']</code></p>
+<p>Should print: <code>[('research_and_draft_workflow', 'SequentialAgent'), ('quality_improvement_loop', 'LoopAgent'), ('parallel_content_creation', 'ParallelAgent')]</code></p>
+<p>Press <code>Ctrl+C</code> to stop the server.</p>
 
 
       </google-codelab-step>
     
-      <google-codelab-step label="The Master Orchestrator" duration="0">
+      <google-codelab-step label="The Orchestrator" duration="0">
         <aside class="special"><p><strong>What you will build:</strong> An LLM-driven <code>Agent</code> that sits at the boundary and reads user intent. It routes content creation requests to <code>full_content_workflow</code> and text analysis requests to <code>content_analyzer_agent</code>, without the user needing to choose explicitly.</p>
 </aside>
 <p>You now have a complete three-phase content pipeline. But users don&#39;t always want to create content - sometimes they want to analyze existing text. Rather than exposing two separate entry points, you&#39;ll wrap everything behind a single orchestrator that reads the user&#39;s intent and routes accordingly.</p>
 <p>This is the <strong>Coordinator</strong> pattern from the architecture framework: one LLM-Driven agent at the boundary, two Workflow-Driven agents behind it. The orchestrator decides; the specialists execute.</p>
-<p class="image-container"><img alt="Full multi-agent system — master orchestrator routing to full_content_workflow and content_analyzer_agent" src="img/9ad048e29ea815b0.png"></p>
+<p class="image-container"><img alt="Full multi-agent system — orchestrator routing to full_content_workflow and content_analyzer_agent" src="img/9ad048e29ea815b0.png"></p>
 <h2 is-upgraded>Content Analyzer Agent</h2>
-<p><code>content_analyzer_agent</code> is already complete — you built and tested it in <strong>section 5</strong>. It has all three tools wired in (<code>count_words</code>, <code>calculate_readability_score</code>, <code>generate_hashtags</code>) and its own <code>root_agent</code>. Here you simply add it as a sub-agent of the master orchestrator.</p>
-<h2 is-upgraded>Fill in the master orchestrator</h2>
+<p><code>content_analyzer_agent</code> is already complete — you built and tested it in <strong>section 5</strong>. It has all three tools wired in (<code>count_words</code>, <code>calculate_readability_score</code>, <code>generate_hashtags</code>) and its own <code>root_agent</code>. Here you simply add it as a sub-agent of the orchestrator.</p>
+<h2 is-upgraded>Fill in the orchestrator</h2>
 <pre><code language="language-python" class="language-python"># agents/orchestrator_agent/agent.py
 
-master_orchestrator_agent = Agent(
-    name=&#34;master_orchestrator_agent&#34;,
+orchestrator_agent = Agent(
+    name=&#34;orchestrator_agent&#34;,
     model=MODEL_NAME,
     instruction=&#34;&#34;&#34;
-    You are the Master Content Creation Studio orchestrator. Delegate tasks to specialists.
+    You are the Content Creation Studio orchestrator. Delegate tasks to specialists.
 
     Past conversations from long-term memory are automatically loaded before each turn.
     Use this context to provide continuity across sessions.
@@ -986,13 +779,14 @@ master_orchestrator_agent = Agent(
     &#34;&#34;&#34;,
     sub_agents=[full_content_workflow, content_analyzer_agent],
     tools=[preload_memory_tool.PreloadMemoryTool()],
+    generate_content_config=GENERATE_CONTENT_CONFIG,
     before_agent_callback=before_agent_callback,
     after_agent_callback=after_agent_callback,
     before_model_callback=before_model_callback,
     after_model_callback=after_model_callback,
 )
 
-root_agent = master_orchestrator_agent
+root_agent = orchestrator_agent
 </code></pre>
 <aside class="special"><p>The callbacks and <code>PreloadMemoryTool</code> are already imported at the top of <code>agent.py</code>. The callback functions are stubs right now - they&#39;ll do nothing until you fill them in during the <strong>Callbacks</strong> and <strong>Long-Term Memory</strong> sections.</p>
 </aside>
@@ -1001,7 +795,7 @@ root_agent = master_orchestrator_agent
 <h2 is-upgraded>Test routing</h2>
 <pre><code language="language-bash" class="language-bash">uv run adk web agents --port 8080
 </code></pre>
-<p>Select <code>master_orchestrator_agent</code> from the dropdown.</p>
+<p>Select <code>orchestrator_agent</code> from the dropdown.</p>
 <p><strong>Test the analyzer route:</strong></p>
 <pre><code language="language-text" class="language-text">Analyze this text: Artificial intelligence is transforming the way businesses operate.
 </code></pre>
@@ -1132,7 +926,7 @@ def after_model_callback(
 <h2 is-upgraded>Test the guardrail</h2>
 <pre><code language="language-bash" class="language-bash">uv run adk web agents --port 8080
 </code></pre>
-<p>Select <code>master_orchestrator_agent</code> from the dropdown, then enter:</p>
+<p>Select <code>orchestrator_agent</code> from the dropdown, then enter:</p>
 <pre><code language="language-text" class="language-text">Create content about violence and illegal activities
 </code></pre>
 <p>You should see this in your terminal and the agent refuses without ever calling the model:</p>
@@ -1236,7 +1030,7 @@ blog_post_writer_agent = Agent(
 <h2 is-upgraded>Try it out</h2>
 <pre><code language="language-bash" class="language-bash">uv run adk web agents --port 8080
 </code></pre>
-<p>Select <code>master_orchestrator_agent</code> from the dropdown, then enter:</p>
+<p>Select <code>orchestrator_agent</code> from the dropdown, then enter:</p>
 <pre><code language="language-text" class="language-text">Create content about remote work productivity and save the blog post as an artifact called blog_post.md
 </code></pre>
 <p>After the agent responds, click the <strong>Artifacts</strong> tab in the ADK Dev UI — you should see <code>blog_post.md</code> listed with version <code>0</code>.</p>
@@ -1654,6 +1448,197 @@ Are you sure you want to proceed? (yes/no):
 <h2 is-upgraded>Verify in the Cloud Console</h2>
 <p>Navigate to <a href="https://console.cloud.google.com/vertex-ai/agents" target="_blank">Agent Runtime</a> and <a href="https://console.cloud.google.com/run" target="_blank">Cloud Run</a> and confirm your resources are no longer listed.</p>
 <p><strong>Tip:</strong> Set a <a href="https://cloud.google.com/billing/docs/how-to/budgets" target="_blank">budget alert</a> on your GCP project to get notified if charges exceed your expected threshold.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Agent Teams: sub_agents vs AgentTool" duration="0">
+        <p>You&#39;ve seen how a single agent uses tools to get things done. But in a multi-agent system, agents also need to delegate work to <em>other agents</em>. ADK gives you two patterns for this - and choosing the wrong one has real consequences for how data flows, how events are visible, and how much control the parent agent has.</p>
+<h2 is-upgraded>Pattern 1: AgentTool (agent as a callable tool)</h2>
+<p><code>AgentTool</code> wraps an entire agent as a tool that a parent agent can call. The parent LLM decides <em>when</em> to call it and what to pass as input, just like any other tool.</p>
+<pre><code language="language-python" class="language-python">from google.adk.tools import agent_tool
+
+specialist_a_tool = agent_tool.AgentTool(agent=specialist_a)
+specialist_b_tool = agent_tool.AgentTool(agent=specialist_b)
+
+coordinator = Agent(
+    name=&#34;coordinator&#34;,
+    model=MODEL_NAME,
+    instruction=&#34;&#34;&#34;
+    You are a coordinator. Use your tools to:
+    - Delegate task A with the specialist_a tool
+    - Delegate task B with the specialist_b tool
+    &#34;&#34;&#34;,
+    tools=[specialist_a_tool, specialist_b_tool],
+)
+</code></pre>
+<p><strong>What happens internally:</strong> The parent agent makes an LLM call, the model emits a tool-call for <code>topic_research_agent</code>, ADK invokes that agent, and the result comes back as a tool response in the parent&#39;s conversation. The inner agent&#39;s events are <strong>not</strong> propagated to the outer runner.</p>
+<h2 is-upgraded>Pattern 2: sub_agents (hierarchical delegation)</h2>
+<p><code>sub_agents</code> declares a parent-child relationship. The parent LLM can <em>transfer control</em> to a sub-agent. The sub-agent runs in the same session, reads the same state, and its events <strong>propagate</strong> to the outer runner.</p>
+<pre><code language="language-python" class="language-python">orchestrator = Agent(
+    name=&#34;orchestrator&#34;,
+    model=MODEL_NAME,
+    instruction=&#34;Route content creation to full_content_workflow, analysis to content_analyzer_agent.&#34;,
+    sub_agents=[full_content_workflow, content_analyzer_agent],
+)
+</code></pre>
+<h2 is-upgraded>Choosing between the two</h2>
+<table>
+<tr><td colspan="1" rowspan="1"></td><td colspan="1" rowspan="1"><p>AgentTool</p>
+</td><td colspan="1" rowspan="1"><p>sub_agents</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Nature</strong></p>
+</td><td colspan="1" rowspan="1"><p>Discrete, stateless - like a function call</p>
+</td><td colspan="1" rowspan="1"><p>Stateful, context-dependent - full control transfer</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Execution context</strong></p>
+</td><td colspan="1" rowspan="1"><p>Runs in an isolated Runner with its own session</p>
+</td><td colspan="1" rowspan="1"><p>Runs in the same invocation context as the parent</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Inner events visible externally?</strong></p>
+</td><td colspan="1" rowspan="1"><p>No - black box, caller only sees final text</p>
+</td><td colspan="1" rowspan="1"><p>Yes - all inner events propagate to the outer runner</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Session state shared?</strong></p>
+</td><td colspan="1" rowspan="1"><p>No - only <code>state_delta</code> forwarded back to parent</p>
+</td><td colspan="1" rowspan="1"><p>Yes - full shared state through invocation context</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Control flow</strong></p>
+</td><td colspan="1" rowspan="1"><p>LLM decides per turn (function-call style)</p>
+</td><td colspan="1" rowspan="1"><p>LLM transfers control; workflow agents use deterministic order</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Best for</strong></p>
+</td><td colspan="1" rowspan="1"><p>Discrete, stateless subtasks</p>
+</td><td colspan="1" rowspan="1"><p>Stateful pipelines, streaming, SSE backends</p>
+</td></tr>
+</table>
+<p><strong>Why this codelab uses sub_agents:</strong> The FastAPI backend in the <strong>Full-Stack Cloud Run Deployment</strong> section uses Server-Sent Events (SSE) to stream content to the React frontend in real time. It does this by reading events from the runner - specifically, it checks the <code>author</code> field of each event to know which agent produced it. This only works with <code>sub_agents</code> because inner agent events propagate. With <code>AgentTool</code>, inner events are hidden and the backend would receive nothing to stream.</p>
+<h2 is-upgraded>A practical example: the orchestrator pattern</h2>
+<p>Both patterns support the same high-level idea - a coordinator that delegates to specialists:</p>
+<pre><code language="language-text" class="language-text">User request
+    ↓
+coordinator/orchestrator
+    ├── delegates to → specialist_A
+    └── delegates to → specialist_B
+</code></pre>
+<p>The difference is whether that delegation is a <em>tool call</em> (AgentTool) or a <em>control transfer</em> (sub_agents). For the Content Creation Studio, control transfer via <code>sub_agents</code> is the right choice because we need event visibility for real-time streaming.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Choosing the Right Architecture" duration="0">
+        <p>Before writing any agent code, the most important question is: <strong>what pattern fits your problem?</strong> Using the wrong architecture leads to brittle systems, unnecessary cost, and agents that fight each other instead of collaborating.</p>
+<h2 is-upgraded>Pattern categories</h2>
+<p>Google Cloud groups agentic patterns into four categories based on your workload&#39;s characteristics:</p>
+<p><strong>Deterministic workflows</strong> - the execution order is fixed in code, not decided by a model:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
+</td><td colspan="1" rowspan="1"><p>Pattern</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Multi-step pipeline where each step depends on the previous</p>
+</td><td colspan="1" rowspan="1"><p><strong>Sequential</strong></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Independent sub-tasks that can run at the same time</p>
+</td><td colspan="1" rowspan="1"><p><strong>Parallel</strong></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Complex generation requiring progressive quality improvement</p>
+</td><td colspan="1" rowspan="1"><p><strong>Iterative Refinement</strong></p>
+</td></tr>
+</table>
+<p><strong>Dynamic orchestration</strong> - a model decides routing and delegation at runtime:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
+</td><td colspan="1" rowspan="1"><p>Pattern</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Varied inputs needing adaptive routing to specialized agents</p>
+</td><td colspan="1" rowspan="1"><p><strong>Coordinator</strong></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Complex, ambiguous tasks requiring multi-level decomposition</p>
+</td><td colspan="1" rowspan="1"><p><strong>Hierarchical Task Decomposition</strong></p>
+</td></tr>
+</table>
+<p><strong>Iterative workflows</strong> - repeat execution until a condition is met:</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
+</td><td colspan="1" rowspan="1"><p>Pattern</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Automated repetition with a predefined termination condition</p>
+</td><td colspan="1" rowspan="1"><p><strong>Loop</strong></p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Output requires distinct validation before completion</p>
+</td><td colspan="1" rowspan="1"><p><strong>Review and Critique</strong></p>
+</td></tr>
+</table>
+<p><strong>Special requirements:</strong></p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>If your task looks like this...</p>
+</td><td colspan="1" rowspan="1"><p>Pattern</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>High-stakes decisions requiring human judgment or approval</p>
+</td><td colspan="1" rowspan="1"><p><strong>Human-in-the-Loop</strong></p>
+</td></tr>
+</table>
+<aside class="special"><p><strong>Start simple:</strong> A non-agentic solution (a single LLM call) may be more cost-effective for predictable tasks like summarization or classification. Only add agents when the task genuinely requires multi-step reasoning, iteration, or parallelism.</p>
+</aside>
+<h2 is-upgraded>The constraints that drive your choice</h2>
+<p><strong>Cost and latency</strong> Every agent hop is an extra LLM call. A 5-agent pipeline uses at least 5× the tokens of a single agent. Parallel agents reduce latency but increase concurrent cost. If budget is tight: use deterministic patterns, smaller models for simple steps, or replace LLM agents with plain Python functions.</p>
+<p><strong>Determinism vs flexibility</strong> Deterministic patterns (Sequential, Parallel, Loop) are faster and more predictable - the code controls the flow. Dynamic patterns (Coordinator, Hierarchical) are more flexible but add routing overhead and are harder to debug.</p>
+<p><strong>Safety and human oversight</strong> Fully automated pipelines work well for low-stakes tasks like content generation. For financial, medical, or legal decisions, use Human-in-the-Loop - the agent pauses at checkpoints for human review before acting.</p>
+<h2 is-upgraded>How this codelab maps to the framework</h2>
+<table>
+<tr><td colspan="1" rowspan="1"><p>Stage</p>
+</td><td colspan="1" rowspan="1"><p>Pattern</p>
+</td><td colspan="1" rowspan="1"><p>Why</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Research → Draft</p>
+</td><td colspan="1" rowspan="1"><p><strong>Sequential</strong></p>
+</td><td colspan="1" rowspan="1"><p>Draft always depends on research - fixed order, no model routing needed</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Draft → Quality check → Improve</p>
+</td><td colspan="1" rowspan="1"><p><strong>Review and Critique</strong> inside a <strong>Loop</strong></p>
+</td><td colspan="1" rowspan="1"><p>Critic evaluates, generator revises; repeats until quality threshold met</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Blog + Social + Email + SEO</p>
+</td><td colspan="1" rowspan="1"><p><strong>Parallel</strong></p>
+</td><td colspan="1" rowspan="1"><p>All four are independent - run concurrently to reduce latency</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p>Route create vs analyse</p>
+</td><td colspan="1" rowspan="1"><p><strong>Coordinator</strong></p>
+</td><td colspan="1" rowspan="1"><p>User intent is open-ended - model decides which pipeline to invoke</p>
+</td></tr>
+</table>
+<p>Keep this table in mind as you build each piece in the following steps.</p>
+<h2 is-upgraded>LLM-Driven vs Workflow-Driven agents</h2>
+<p>ADK has two fundamentally different agent types, and mixing them up is one of the most common architectural mistakes.</p>
+<table>
+<tr><td colspan="1" rowspan="1"><p>Dimension</p>
+</td><td colspan="1" rowspan="1"><p>LLM-Driven (Agent)</p>
+</td><td colspan="1" rowspan="1"><p>Workflow-Driven (Sequential/Parallel/Loop)</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Routing</strong></p>
+</td><td colspan="1" rowspan="1"><p>LLM decides what to call next</p>
+</td><td colspan="1" rowspan="1"><p>Code defines the execution graph</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Flexibility</strong></p>
+</td><td colspan="1" rowspan="1"><p>Handles ambiguous, open-ended requests</p>
+</td><td colspan="1" rowspan="1"><p>Fixed structure, predictable output</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Cost</strong></p>
+</td><td colspan="1" rowspan="1"><p>Higher (extra LLM call to route)</p>
+</td><td colspan="1" rowspan="1"><p>Lower (no routing LLM call)</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Debuggability</strong></p>
+</td><td colspan="1" rowspan="1"><p>Harder - model behavior varies</p>
+</td><td colspan="1" rowspan="1"><p>Easier - same steps every time</p>
+</td></tr>
+<tr><td colspan="1" rowspan="1"><p><strong>Best for</strong></p>
+</td><td colspan="1" rowspan="1"><p>User-facing intent parsing, open routing</p>
+</td><td colspan="1" rowspan="1"><p>Well-defined pipelines with known steps</p>
+</td></tr>
+</table>
+<aside class="special"><p><strong>The key insight:</strong> Use LLM-Driven agents at the <strong>boundaries</strong> where human intent is ambiguous. Use Workflow-Driven agents <strong>inside</strong> those boundaries where the steps are well-defined.</p>
+</aside>
+<p>In the Content Creation Studio, <code>orchestrator_agent</code> is LLM-Driven (it decides whether to create content or analyze it). Once it routes to <code>full_content_workflow</code>, that workflow is entirely Workflow-Driven - Sequential → Loop → Parallel - because the steps are always the same.</p>
 
 
       </google-codelab-step>

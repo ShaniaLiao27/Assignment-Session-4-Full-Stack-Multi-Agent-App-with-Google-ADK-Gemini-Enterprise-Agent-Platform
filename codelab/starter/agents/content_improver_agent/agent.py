@@ -15,7 +15,7 @@ content_improver_agent = Agent(
 
     - IF feedback is '{QUALITY_THRESHOLD_MET}':
       1. Call the `exit_loop` tool to terminate the loop
-      2. Then respond with: "Quality threshold met! Content approved."
+      2. Respond with the COMPLETE current content in markdown (do NOT add status messages).
 
     - ELSE: improve based on issues:
       * Expand if short (add examples, details, explanations)

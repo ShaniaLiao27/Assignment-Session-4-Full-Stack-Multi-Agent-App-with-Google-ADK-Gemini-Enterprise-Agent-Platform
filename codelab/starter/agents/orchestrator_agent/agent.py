@@ -57,9 +57,9 @@ parallel_content_creation = None  # Replace this line
 full_content_workflow = None  # Replace this line
 
 
-# --- Step 13: Root Agent (Master Orchestrator) ---
-# TODO: #REPLACE-master-orchestrator
-# Create an Agent named "master_orchestrator_agent" with:
+# --- Step 13: Root Agent (Orchestrator) ---
+# TODO: #REPLACE-orchestrator
+# Create an Agent named "orchestrator_agent" with:
 #   - model=MODEL_NAME  (plain string — lets ADK pick the right backend at runtime)
 #   - instruction: routes to full_content_workflow for content creation
 #                  OR content_analyzer_agent for text analysis
@@ -70,8 +70,8 @@ full_content_workflow = None  # Replace this line
 #   - after_agent_callback=after_agent_callback
 #   - before_model_callback=before_model_callback
 #   - after_model_callback=after_model_callback
-master_orchestrator_agent = None  # Replace this line
+orchestrator_agent = None  # Replace this line
 
 
 # root_agent is used by `adk web` and the Runner
-root_agent = master_orchestrator_agent
+root_agent = orchestrator_agent

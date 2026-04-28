@@ -80,6 +80,7 @@ echo "----------------------------------------------------------"
 echo "  (Runs in GCP — no local Docker required)"
 gcloud builds submit \
     --tag "$IMAGE_NAME" \
+    --machine-type=e2-highcpu-8 \
     --project=$GOOGLE_CLOUD_PROJECT \
     .
 echo "✅ Image built and pushed successfully"

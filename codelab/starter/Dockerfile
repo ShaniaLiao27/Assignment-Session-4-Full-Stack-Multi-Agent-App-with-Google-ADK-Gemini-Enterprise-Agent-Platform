@@ -34,8 +34,9 @@ COPY backend ./backend
 # Install dependencies into the system Python (no project venv)
 RUN uv sync --frozen --no-dev
 
-# Copy built frontend from previous stage
-COPY --from=frontend-build /frontend/dist ./static
+# Copy built frontend from previous stage — must live next to api_server.py
+# because api_server.py uses Path(__file__).parent / "static" to locate it
+COPY --from=frontend-build /frontend/dist ./backend/static
 
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}

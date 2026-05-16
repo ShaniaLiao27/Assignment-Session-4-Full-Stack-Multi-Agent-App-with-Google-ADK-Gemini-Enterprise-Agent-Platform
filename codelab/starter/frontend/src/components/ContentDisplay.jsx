@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 
 const CHANNELS = [
   { key: 'blog_post', label: 'Blog Post', icon: 'pencil', filename: 'blog_post.md' },
+  { key: 'linkedin_post', label: 'LinkedIn Post', icon: 'share', filename: 'linkedin_post.md' },
   { key: 'social_media', label: 'Social Media', icon: 'share', filename: 'social_media.md' },
   { key: 'email_newsletter', label: 'Email Newsletter', icon: 'mail', filename: 'email_newsletter.md' },
   { key: 'seo_metadata', label: 'SEO Metadata', icon: 'search', filename: 'seo_metadata.md' },

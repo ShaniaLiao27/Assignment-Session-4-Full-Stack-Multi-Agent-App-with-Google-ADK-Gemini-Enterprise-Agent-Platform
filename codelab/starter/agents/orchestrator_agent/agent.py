@@ -21,6 +21,7 @@ from agents.content_drafter_agent.agent import content_drafter_agent
 from agents.quality_checker_agent.agent import quality_checker_agent
 from agents.content_improver_agent.agent import content_improver_agent
 from agents.blog_post_writer_agent.agent import blog_post_writer_agent
+from agents.linkedin_post_creator_agent.agent import linkedin_post_creator_agent
 from agents.social_media_creator_agent.agent import social_media_creator_agent
 from agents.email_newsletter_writer_agent.agent import email_newsletter_writer_agent
 from agents.seo_metadata_agent.agent import seo_metadata_agent
@@ -63,6 +64,7 @@ parallel_content_creation = ParallelAgent(
     sub_agents=[
         blog_post_writer_agent,
         social_media_creator_agent,
+        linkedin_post_creator_agent,
         email_newsletter_writer_agent,
         seo_metadata_agent,
     ],

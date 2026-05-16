@@ -28,6 +28,7 @@ AGENT_NAME = "orchestrator_agent"
 # With sub_agents, inner events propagate and include the author field.
 CHANNEL_MAP = {
     "blog_post_writer_agent": "blog_post",
+    "linkedin_post_creator_agent": "linkedin_post",
     "social_media_creator_agent": "social_media",
     "email_newsletter_writer_agent": "email_newsletter",
     "seo_metadata_agent": "seo_metadata",
